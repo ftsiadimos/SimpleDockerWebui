@@ -43,7 +43,7 @@
   <div class="card-body p-0">
     <form action="{{ url_for('main.submit_remove') }}" method="post" id="containerForm">
       <div class="table-responsive">
-        <table id="containersTable" class="table table-striped table-hover mb-0">
+        <table id="containersTable" class="table table-striped table-hover mb-0 w-100">
           <thead class="table-light">
             <tr>
               <th scope="col" style="width: 40px;">
@@ -61,18 +61,21 @@
           <tbody>
             {% for container in containers %}
             <tr>
-              <td>
+              <td class="align-middle">
                 <input type="checkbox" name="interests" value="{{ container.id }}" 
                        aria-label="Select {{ container.name }}">
               </td>
-              <td class="wrap-cell">
-                <span class="ellipsis" title="{{ container.name }}">{{ container.name }}</span>
+              <td class="wrap-cell align-middle">
+                <div class="d-flex flex-column">
+                  <span class="ellipsis fw-semibold" title="{{ container.name }}">{{ container.name }}</span>
+                  <small class="text-muted d-none d-md-inline" title="{{ container.image }}">{{ container.image }}</small>
+                </div>
               </td>
-              <td class="wrap-cell d-none d-md-table-cell">
+              <td class="wrap-cell d-none d-md-table-cell align-middle">
                 {% set image_name = container.image %}
                 <span class="ellipsis text-muted small" title="{{ image_name }}">{{ image_name }}</span>
               </td>
-              <td class="wrap-cell">
+              <td class="wrap-cell align-middle">
                 {% if 'running' in container.status.lower() %}
                   <span class="status-running" title="{{ container.status }}">● Running</span>
                 {% elif 'exited' in container.status.lower() %}
@@ -83,46 +86,49 @@
                   <span class="ellipsis" title="{{ container.status }}">{{ container.status }}</span>
                 {% endif %}
               </td>
-              <td class="wrap-cell d-none d-lg-table-cell">
+              <td class="wrap-cell d-none d-lg-table-cell align-middle">
                 {% set ports = container.ports %}
+                {% set has_any = false %}
                 {% for internal_port, host_ports in ports.items() %}
                   {% if host_ports %}
+                    {% set has_any = true %}
                     {% for host_port_info in host_ports %}
                       {% set host_port = host_port_info.get('HostPort') %}
                       <a href="http://{{ serverurl.host if serverurl and serverurl.host else 'localhost' }}:{{ host_port }}" 
                          target="_blank" 
-                         class="badge bg-secondary text-decoration-none"
+                         class="badge bg-secondary text-decoration-none me-1"
                          title="{{ internal_port }} → {{ host_port }}">
                         :{{ host_port }}
                       </a>
                     {% endfor %}
                   {% endif %}
-                {% else %}
-                  <span class="text-muted">—</span>
                 {% endfor %}
+                {% if not has_any %}
+                  <span class="text-muted">—</span>
+                {% endif %}
               </td>
-              <td class="btn-cell">
+              <td class="btn-cell align-middle">
                 <button type="submit" formaction="{{ url_for('main.logs') }}" 
                         name="logs" value="{{ container.id }}" 
                         class="btn btn-outline-primary btn-sm"
                         title="View logs" data-bs-toggle="tooltip">
-                  <i class="fa-solid fa-file-lines" aria-hidden="true"></i> Logs
+                  <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
                 </button>
               </td>
-              <td class="btn-cell">
+              <td class="btn-cell align-middle">
                 <button type="submit" formaction="{{ url_for('main.comma') }}" 
                         name="comma" value="{{ container.id }}" 
                         class="btn btn-outline-success btn-sm"
                         title="Open terminal" data-bs-toggle="tooltip">
-                  <i class="fa-solid fa-terminal" aria-hidden="true"></i> Terminal
+                  <i class="fa-solid fa-terminal" aria-hidden="true"></i>
                 </button>
               </td>
-              <td class="btn-cell">
+              <td class="btn-cell align-middle">
                 <button type="submit" formaction="{{ url_for('main.inspect') }}" 
                         name="inspect" value="{{ container.id }}" 
                         class="btn btn-outline-info btn-sm"
                         title="Inspect container" data-bs-toggle="tooltip">
-                  <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Inspect
+                  <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
                 </button>
               </td>
             </tr>

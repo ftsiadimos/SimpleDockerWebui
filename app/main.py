@@ -480,32 +480,103 @@ def comma():
         return redirect(url_for('main.index'))
 
 
-@main_bp.route("/stats", methods=["POST"])
+@main_bp.route("/stats", methods=["GET", "POST"])
 def stats():
-    """Display stats for selected containers."""
-    container_ids = request.form.getlist("interests")
+    """Display stats for selected containers.
+
+    Supports:
+      - POST with multiple selected checkboxes (name="interests")
+      - POST with single per-row button (name="stats")
+      - GET with ?container=<id>
+    """
+    # Determine requested container ids from multiple possible sources
+    container_ids = []
+    # checkbox selections
+    container_ids.extend(request.values.getlist('interests'))
+    # single-button per-row value
+    single = request.values.get('stats') or request.args.get('container')
+    if single:
+        container_ids.append(single)
+
+    # Deduplicate and validate
+    container_ids = [c for i, c in enumerate(container_ids) if c and c not in container_ids[:i]]
+
     if not container_ids:
         flash('No containers selected.', 'warning')
-        return redirect(url_for('main.index'))
-
-    base_url, server_obj = get_docker_base_url()
-    env = os.environ.copy()
-    env['DOCKER_HOST'] = base_url
+        return redirect(url_for('main.containers'))
 
     try:
-        command = ['docker', 'stats', '--no-stream'] + container_ids
-        result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            stats_text = result.stdout
-        else:
-            stats_text = f"Error: {result.stderr}"
-    except subprocess.TimeoutExpired:
-        stats_text = "Timeout while fetching stats."
-    except Exception as e:
-        stats_text = f"Error: {str(e)}"
+        client, _ = conf()
+        lines = []
+        # Header similar to docker stats
+        header = "CONTAINER ID  NAME  CPU %   MEM USAGE / LIMIT   MEM %   NET I/O   BLOCK I/O   PIDS"
+        lines.append(header)
+
+        def human_readable_bytes(n):
+            try:
+                n = float(n)
+            except Exception:
+                return str(n)
+            units = ['B', 'KiB', 'MiB', 'GiB', 'TiB']
+            for u in units:
+                if abs(n) < 1024.0:
+                    return f"{n:.1f}{u}"
+                n /= 1024.0
+            return f"{n:.1f}PiB"
+
+        for cid in container_ids:
+            try:
+                container = client.containers.get(cid)
+                stats = container.stats(stream=False)
+
+                # CPU calculation
+                cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - stats.get('precpu_stats', {}).get('cpu_usage', {}).get('total_usage', 0)
+                system_delta = stats['cpu_stats'].get('system_cpu_usage', 0) - stats.get('precpu_stats', {}).get('system_cpu_usage', 0)
+                online_cpus = stats['cpu_stats'].get('online_cpus') or len(stats['cpu_stats'].get('cpu_usage', {}).get('percpu_usage', []) or []) or 1
+                cpu_pct = 0.0
+                if system_delta > 0 and cpu_delta > 0:
+                    cpu_pct = (cpu_delta / system_delta) * online_cpus * 100.0
+
+                # Memory
+                mem_used = stats.get('memory_stats', {}).get('usage', 0)
+                mem_limit = stats.get('memory_stats', {}).get('limit', 0)
+                mem_pct = (float(mem_used) / mem_limit * 100.0) if mem_limit else 0.0
+
+                # Network
+                net_rx = 0
+                net_tx = 0
+                networks = stats.get('networks') or {}
+                for iface, data in networks.items():
+                    net_rx += data.get('rx_bytes', 0)
+                    net_tx += data.get('tx_bytes', 0)
+
+                # Block IO
+                blk_read = 0
+                blk_write = 0
+                for blk in stats.get('blkio_stats', {}).get('io_service_bytes_recursive', []) or []:
+                    op = blk.get('op', '').lower()
+                    val = blk.get('value', 0)
+                    if op == 'read':
+                        blk_read += val
+                    elif op == 'write':
+                        blk_write += val
+
+                pids = stats.get('pids_stats', {}).get('current', '-')
+
+                line = f"{container.id[:12]:12}  {container.name[:20]:20}  {cpu_pct:6.1f}%   {human_readable_bytes(mem_used):10} / {human_readable_bytes(mem_limit):7}   {mem_pct:5.1f}%   {human_readable_bytes(net_rx)} / {human_readable_bytes(net_tx)}   {human_readable_bytes(blk_read)} / {human_readable_bytes(blk_write)}   {pids}"
+                lines.append(line)
+            except docker.errors.NotFound:
+                lines.append(f"{cid[:12]}  (not found)")
+            except Exception as e:
+                lines.append(f"{cid[:12]}  Error: {e}")
+
+        stats_text = '\n'.join(lines)
+    except ValueError as e:
+        stats_text = f"Error connecting to Docker server: {e}"
+    except docker.errors.APIError as e:
+        stats_text = f"Docker API error: {e}"
 
     return render_template('stats.html', stats_text=stats_text)
-
 
 @main_bp.route("/inspect", methods=["POST"])
 def inspect():
