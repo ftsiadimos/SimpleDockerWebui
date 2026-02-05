@@ -1,246 +1,137 @@
 {% extends 'base.html' %}
+{% block page_title %}Inspect Container: {{ container_id[:12] }}{% endblock %}
 
 {% block content %}
-<style>
-  .log-container {
-    background-color: #1e1e1e;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .log-header {
-    background-color: #2d2d2d;
-    padding: 0.75rem 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #3d3d3d;
-  }
-  .log-content {
-    padding: 0.5rem;
-    max-height: 70vh;
-    overflow-y: auto;
-    overflow-x: auto;
-    color: #00ff00;
-    font-family: 'Fira Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.95rem;
-    line-height: 1.4;
-    background: #1e1e1e;
-  }
-  .log-line {
-    padding: 0.25rem 0.5rem;
-    margin-bottom: 0.25rem;
-    border-radius: 4px;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    display: flex;
-    gap: 0.75rem;
-    align-items: flex-start;
-  }
-  .log-line:nth-child(even) {
-    background-color: rgba(255, 255, 255, 0.02);
-  }
-  .log-line:nth-child(odd) {
-    background-color: rgba(255, 255, 255, 0.01);
-  }
-  .lnum { color: #6c757d; min-width: 3ch; text-align: right; }
-  .level-error { color: #ff6b6b; font-weight: 700; }
-  .level-warn { color: #ffd166; font-weight: 700; }
-  .level-info { color: #74c0fc; }
-  .level-debug { color: #adb5bd; }
-  .log-content::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  .log-content::-webkit-scrollbar-track {
-    background: #2d2d2d;
-  }
-  .log-content::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 4px;
-  }
-  .log-content::-webkit-scrollbar-thumb:hover {
-    background: #666;
-  }
-  .btn-log-control {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.875rem;
-  }
-  pre {
-    background: #1e1e1e !important;
-    color: #00ff00 !important;
-    border: none;
-    margin: 0;
-    padding: 0;
-  }
-  .json-item {
-    padding-left: 1rem;
-    color: #00ff00;
-    font-family: 'Fira Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.9rem;
-    line-height: 1.4;
-  }
-  .json-toggle {
-    cursor: pointer;
-    color: #00ff00;
-    font-weight: bold;
-    margin-right: 0.5rem;
-  }
-  .json-children {
-    margin-left: 1rem;
-  }
-  .json-key {
-    color: #74c0fc;
-  }
-  .json-string {
-    color: #c7f9c7;
-  }
-  .json-number {
-    color: #ffd166;
-  }
-  .json-boolean {
-    color: #ff6b6b;
-  }
-  .json-null {
-    color: #adb5bd;
-  }
-  .json-string-truncated {
-    cursor: pointer;
-    text-decoration: underline;
-    color: #74c0fc;
-  }
-  .json-string-full {
-    display: none;
-  }
-</style>
-
-<div class="log-container shadow">
-  <div class="log-header">
+<div class="inspect-container shadow">
+  <div class="inspect-header">
     <div class="d-flex align-items-center gap-2">
-      <i class="fa fa-info-circle text-light" aria-hidden="true"></i>
-      <span class="text-light fw-medium">Inspect Container: {{ container_id }}</span>
+      <i class="fa-solid fa-circle-info text-light" aria-hidden="true"></i>
+      <span class="text-light fw-medium">Inspect</span>
     </div>
     <div class="btn-group" role="group" aria-label="Inspect controls">
-      <button type="button" id="scrollTopBtn" class="btn btn-outline-light btn-log-control" title="Scroll to top">
-        <i class="fa fa-arrow-up" aria-hidden="true"></i> Top
+      <button type="button" id="scrollTopBtn" class="btn btn-outline-light btn-log-control" title="Scroll to top" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Top
       </button>
-      <button type="button" id="scrollBottomBtn" class="btn btn-outline-light btn-log-control" title="Scroll to bottom">
-        <i class="fa fa-arrow-down" aria-hidden="true"></i> Bottom
+      <button type="button" id="scrollBottomBtn" class="btn btn-outline-light btn-log-control" title="Scroll to bottom" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-arrow-down" aria-hidden="true"></i> Bottom
       </button>
-      <button type="button" id="downloadBtn" class="btn btn-outline-success btn-log-control" title="Download inspect data">
-        <i class="fa fa-download" aria-hidden="true"></i> Download
+      <button type="button" id="downloadBtn" class="btn btn-outline-success btn-log-control" title="Download inspect data" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-download" aria-hidden="true"></i> Download
       </button>
-      <button type="button" id="goBackBtn" class="btn btn-outline-warning btn-log-control" title="Go back">
-        <i class="fa fa-arrow-left" aria-hidden="true"></i> Back
+      <button type="button" id="goBackBtn" class="btn btn-outline-warning btn-log-control" title="Go back" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back
       </button>
     </div>
   </div>
-  <div id="inspectContent" class="log-content">
+  <div id="inspectContent" class="inspect-content">
     <div id="jsonViewer"></div>
   </div>
 </div>
 
 <script>
-  const inspectEl = document.getElementById('inspectContent');
+  (function(){
+    const inspectEl = document.getElementById('inspectContent');
 
-  // Scroll to bottom on page load
-  window.addEventListener('load', () => {
-    inspectEl.scrollTop = inspectEl.scrollHeight;
-  });
-
-  // Scroll controls
-  document.getElementById('scrollTopBtn').addEventListener('click', () => {
-    inspectEl.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-
-  document.getElementById('scrollBottomBtn').addEventListener('click', () => {
-    inspectEl.scrollTo({ top: inspectEl.scrollHeight, behavior: 'smooth' });
-  });
-
-  document.getElementById('goBackBtn').addEventListener('click', () => {
-    window.history.back();
-  });
-
-  // Download inspect data
-  document.getElementById('downloadBtn').addEventListener('click', () => {
-    const text = JSON.stringify({{ inspect_data | tojson }}, null, 2);
-    const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inspect-${'{{ container_id }}'}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  });
-
-  // JSON Viewer
-  function processString(str) {
-    // Replace long hex strings with truncated versions
-    return str.replace(/[a-f0-9]{20,}/gi, (match) => {
-      const truncated = '...' + match.slice(-4);
-      return `<span class="json-string-truncated" onclick="toggleString(this)">${truncated}</span><span class="json-string-full">${match}</span>`;
+    // Scroll to bottom on page load
+    window.addEventListener('load', () => {
+      inspectEl.scrollTop = inspectEl.scrollHeight;
     });
-  }
 
-  function renderJSON(obj, key = '', level = 0) {
-    const indent = '  '.repeat(level);
-    const isExpanded = level === 0;
-    const toggleSymbol = isExpanded ? '▼' : '▶';
-    const displayStyle = isExpanded ? 'block' : 'none';
-    if (obj === null) {
-      return `<div class="json-item">${indent}<span class="json-null">${key ? key + ': ' : ''}null</span></div>`;
-    }
-    if (typeof obj === 'boolean') {
-      return `<div class="json-item">${indent}<span class="json-boolean">${key ? key + ': ' : ''}${obj}</span></div>`;
-    }
-    if (typeof obj === 'number') {
-      return `<div class="json-item">${indent}<span class="json-number">${key ? key + ': ' : ''}${obj}</span></div>`;
-    }
-    if (typeof obj === 'string') {
-      const processed = processString(obj);
-      return `<div class="json-item">${indent}<span class="json-string">${key ? '"' + key + '": ' : ''}"${processed}"</span></div>`;
-    }
-    if (Array.isArray(obj)) {
-      let html = `<div class="json-item">${indent}<span class="json-toggle" onclick="toggle(this)">${toggleSymbol}</span> ${key ? '"' + key + '": ' : ''}[ <span class="json-number">${obj.length}</span> items ]<div class="json-children" style="display:${displayStyle}">`;
-      obj.forEach((item, i) => {
-        html += renderJSON(item, '', level + 1);
+    // Scroll controls
+    document.getElementById('scrollTopBtn').addEventListener('click', () => {
+      inspectEl.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    document.getElementById('scrollBottomBtn').addEventListener('click', () => {
+      inspectEl.scrollTo({ top: inspectEl.scrollHeight, behavior: 'smooth' });
+    });
+
+    document.getElementById('goBackBtn').addEventListener('click', () => {
+      window.history.back();
+    });
+
+    // Download inspect data
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const text = JSON.stringify({{ inspect_data | tojson }}, null, 2);
+      const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inspect-${'{{ container_id }}'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // JSON Viewer
+    function processString(str) {
+      // Replace long hex strings with truncated versions
+      return str.replace(/[a-f0-9]{20,}/gi, (match) => {
+        const truncated = '...' + match.slice(-4);
+        return `<span class="json-string-truncated" onclick="toggleString(this)">${truncated}</span><span class="json-string-full">${match}</span>`;
       });
-      html += `${indent}</div>]</div>`;
-      return html;
     }
-    if (typeof obj === 'object') {
-      const keys = Object.keys(obj);
-      let html = `<div class="json-item">${indent}<span class="json-toggle" onclick="toggle(this)">${toggleSymbol}</span> ${key ? '"' + key + '": ' : ''}{ <span class="json-number">${keys.length}</span> properties }<div class="json-children" style="display:${displayStyle}">`;
-      keys.forEach(k => {
-        html += renderJSON(obj[k], k, level + 1);
-      });
-      html += `${indent}</div>}</div>`;
-      return html;
+
+    function renderJSON(obj, key = '', level = 0) {
+      const indent = '  '.repeat(level);
+      const isExpanded = level === 0;
+      const toggleSymbol = isExpanded ? '▼' : '▶';
+      const displayStyle = isExpanded ? 'block' : 'none';
+      if (obj === null) {
+        return `<div class="json-item">${indent}<span class="json-null">${key ? key + ': ' : ''}null</span></div>`;
+      }
+      if (typeof obj === 'boolean') {
+        return `<div class="json-item">${indent}<span class="json-boolean">${key ? key + ': ' : ''}${obj}</span></div>`;
+      }
+      if (typeof obj === 'number') {
+        return `<div class="json-item">${indent}<span class="json-number">${key ? key + ': ' : ''}${obj}</span></div>`;
+      }
+      if (typeof obj === 'string') {
+        const processed = processString(obj);
+        return `<div class="json-item">${indent}<span class="json-string">${key ? '"' + key + '": ' : ''}"${processed}"</span></div>`;
+      }
+      if (Array.isArray(obj)) {
+        let html = `<div class="json-item">${indent}<span class="json-toggle" onclick="toggle(this)">${toggleSymbol}</span> ${key ? '"' + key + '": ' : ''}[ <span class="json-number">${obj.length}</span> items ]<div class="json-children" style="display:${displayStyle}">`;
+        obj.forEach((item, i) => {
+          html += renderJSON(item, '', level + 1);
+        });
+        html += `${indent}</div>]</div>`;
+        return html;
+      }
+      if (typeof obj === 'object') {
+        const keys = Object.keys(obj);
+        let html = `<div class="json-item">${indent}<span class="json-toggle" onclick="toggle(this)">${toggleSymbol}</span> ${key ? '"' + key + '": ' : ''}{ <span class="json-number">${keys.length}</span> properties }<div class="json-children" style="display:${displayStyle}">`;
+        keys.forEach(k => {
+          html += renderJSON(obj[k], k, level + 1);
+        });
+        html += `${indent}</div>}</div>`;
+        return html;
+      }
+      return `<div class="json-item">${indent}${key ? key + ': ' : ''}${String(obj)}</div>`;
     }
-    return `<div class="json-item">${indent}${key ? key + ': ' : ''}${String(obj)}</div>`;
-  }
 
-  function toggle(el) {
-    const children = el.parentElement.querySelector('.json-children');
-    if (children.style.display === 'none') {
-      children.style.display = 'block';
-      el.textContent = '▼';
-    } else {
-      children.style.display = 'none';
-      el.textContent = '▶';
-    }
-  }
+    // Make functions globally available
+    window.toggle = function(el) {
+      const children = el.parentElement.querySelector('.json-children');
+      if (children.style.display === 'none') {
+        children.style.display = 'block';
+        el.textContent = '▼';
+      } else {
+        children.style.display = 'none';
+        el.textContent = '▶';
+      }
+    };
 
-  function toggleString(el) {
-    const full = el.nextElementSibling;
-    el.style.display = 'none';
-    full.style.display = 'inline';
-  }
+    window.toggleString = function(el) {
+      const full = el.nextElementSibling;
+      el.style.display = 'none';
+      full.style.display = 'inline';
+    };
 
-  // Render the JSON
-  const inspectData = {{ inspect_data | tojson }};
-  document.getElementById('jsonViewer').innerHTML = renderJSON(inspectData);
+    // Render the JSON
+    const inspectData = {{ inspect_data | tojson }};
+    document.getElementById('jsonViewer').innerHTML = renderJSON(inspectData);
+  })();
 </script>
 {% endblock %}

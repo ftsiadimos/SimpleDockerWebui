@@ -1,83 +1,25 @@
 {% extends 'base.html' %}
+{% block page_title %}Stats{% endblock %}
 
 {% block content %}
-<style>
-  .stats-container {
-    background-color: #1e1e1e;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .stats-header {
-    background-color: #2d2d2d;
-    padding: 0.75rem 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #3d3d3d;
-  }
-  .stats-content {
-    padding: 0.5rem;
-    max-height: 70vh;
-    overflow-y: auto;
-    overflow-x: auto;
-    color: #c7f9c7;
-    font-family: 'Fira Mono', 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.95rem;
-    line-height: 1.4;
-    background: #0f1720;
-  }
-  .stats-line {
-    padding: 0.25rem 0.5rem;
-    margin-bottom: 0.25rem;
-    border-radius: 4px;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-  }
-  .stats-line:nth-child(even) {
-    background-color: rgba(255, 255, 255, 0.02);
-  }
-  .stats-line:nth-child(odd) {
-    background-color: rgba(255, 255, 255, 0.01);
-  }
-  .stats-content::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  .stats-content::-webkit-scrollbar-track {
-    background: #2d2d2d;
-  }
-  .stats-content::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 4px;
-  }
-  .stats-content::-webkit-scrollbar-thumb:hover {
-    background: #666;
-  }
-  .btn-stats-control {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.875rem;
-  }
-</style>
-
 <div class="stats-container shadow">
   <div class="stats-header">
     <div class="d-flex align-items-center gap-2">
-      <i class="fa fa-bar-chart text-light" aria-hidden="true"></i>
-      <span class="text-light fw-medium">Container Stats</span>
+      <i class="fa-solid fa-chart-bar text-light" aria-hidden="true"></i>
+      <span class="text-light fw-medium">Stats</span>
     </div>
     <div class="btn-group" role="group" aria-label="Stats controls">
-      <button type="button" id="scrollTopBtn" class="btn btn-outline-light btn-stats-control" title="Scroll to top">
-        <i class="fa fa-arrow-up" aria-hidden="true"></i> Top
+      <button type="button" id="scrollTopBtn" class="btn btn-outline-light btn-stats-control" title="Scroll to top" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Top
       </button>
-      <button type="button" id="scrollBottomBtn" class="btn btn-outline-light btn-stats-control" title="Scroll to bottom">
-        <i class="fa fa-arrow-down" aria-hidden="true"></i> Bottom
+      <button type="button" id="scrollBottomBtn" class="btn btn-outline-light btn-stats-control" title="Scroll to bottom" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-arrow-down" aria-hidden="true"></i> Bottom
       </button>
-      <button type="button" id="downloadBtn" class="btn btn-outline-success btn-stats-control" title="Download stats">
-        <i class="fa fa-download" aria-hidden="true"></i> Download
+      <button type="button" id="downloadBtn" class="btn btn-outline-success btn-stats-control" title="Download stats" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-download" aria-hidden="true"></i> Download
       </button>
-      <button type="button" id="goBackBtn" class="btn btn-outline-warning btn-stats-control" title="Go back">
-        <i class="fa fa-arrow-left" aria-hidden="true"></i> Back
+      <button type="button" id="goBackBtn" class="btn btn-outline-warning btn-stats-control" title="Go back" data-bs-toggle="tooltip">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back
       </button>
     </div>
   </div>
@@ -122,5 +64,6 @@
     a.remove();
     URL.revokeObjectURL(url);
   });
+</script>
 </script>
 {% endblock %}

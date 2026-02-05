@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block page_title %}Containers{% endblock %}
+
+{% block content %}
+
+<!-- Page header: title, server selector and search -->
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+
+
+  <div class="d-flex align-items-center gap-3">
+    <div class="input-group align-items-center dt-search-wrapper" style="max-width:400px;">
+      <span class="input-group-text"><i class="fa-solid fa-search"></i></span>
+      <input id="tableSearch" type="search" class="form-control border-start-0" style="height: 38px;" placeholder="Search containers..." aria-label="Search containers">
+    </div>
+  </div>
+  
+
+</div>
+
+<div class="card shadow-sm border-0">
+  {% if containers %}
+  <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">{{ containers|length }} container{{ 's' if containers|length != 1 else '' }}</span>
+    <div class="btn-group btn-group-sm" role="group">
+      <button type="submit" name="submit_button" value="Start" class="btn btn-success" form="containerForm" data-bs-toggle="tooltip" title="Start selected containers">
+        <i class="fa-solid fa-play me-1"></i>Start
+      </button>
+      <button type="submit" name="submit_button" value="Stop" class="btn btn-warning" form="containerForm" data-bs-toggle="tooltip" title="Stop selected containers">
+        <i class="fa-solid fa-stop me-1"></i>Stop
+      </button>
+      <button type="submit" name="submit_button" value="Restart" class="btn btn-info" form="containerForm" data-bs-toggle="tooltip" title="Restart selected containers">
+        <i class="fa-solid fa-rotate me-1"></i>Restart
+      </button>
+      <button type="submit" name="submit_button" value="Delete" class="btn btn-danger" form="containerForm" data-bs-toggle="tooltip" title="Delete selected containers" onclick="return confirm('Are you sure you want to delete the selected container(s)?');">
+        <i class="fa-solid fa-trash me-1"></i>Delete
+      </button>
+      <button type="submit" formaction="{{ url_for('main.stats') }}" class="btn btn-secondary" form="containerForm" data-bs-toggle="tooltip" title="View stats for selected">
+        <i class="fa-solid fa-chart-bar me-1"></i>Stats
+      </button>
+    </div>
+  </div>
+  {% endif %}
+  <div class="card-body p-0">
+    <form action="{{ url_for('main.submit_remove') }}" method="post" id="containerForm">
+      <div class="table-responsive">
+        <table id="containersTable" class="table table-striped table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width: 40px;">
+                <input type="checkbox" id="selectAll" aria-label="Select all containers">
+              </th>
+              <th scope="col">Name</th>
+              <th scope="col" class="d-none d-md-table-cell">Image</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="d-none d-lg-table-cell">Ports</th>
+              <th scope="col" style="width: 80px;">Logs</th>
+              <th scope="col" style="width: 80px;">Terminal</th>
+              <th scope="col" style="width: 80px;">Inspect</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for container in containers %}
+            <tr>
+              <td>
+                <input type="checkbox" name="interests" value="{{ container.id }}" 
+                       aria-label="Select {{ container.name }}">
+              </td>
+              <td class="wrap-cell">
+                <span class="ellipsis" title="{{ container.name }}">{{ container.name }}</span>
+              </td>
+              <td class="wrap-cell d-none d-md-table-cell">
+                {% set image_name = container.image %}
+                <span class="ellipsis text-muted small" title="{{ image_name }}">{{ image_name }}</span>
+              </td>
+              <td class="wrap-cell">
+                {% if 'running' in container.status.lower() %}
+                  <span class="status-running" title="{{ container.status }}">● Running</span>
+                {% elif 'exited' in container.status.lower() %}
+                  <span class="status-exited" title="{{ container.status }}">● Exited</span>
+                {% elif 'paused' in container.status.lower() %}
+                  <span class="status-paused" title="{{ container.status }}">● Paused</span>
+                {% else %}
+                  <span class="ellipsis" title="{{ container.status }}">{{ container.status }}</span>
+                {% endif %}
+              </td>
+              <td class="wrap-cell d-none d-lg-table-cell">
+                {% set ports = container.ports %}
+                {% for internal_port, host_ports in ports.items() %}
+                  {% if host_ports %}
+                    {% for host_port_info in host_ports %}
+                      {% set host_port = host_port_info.get('HostPort') %}
+                      <a href="http://{{ serverurl.host if serverurl and serverurl.host else 'localhost' }}:{{ host_port }}" 
+                         target="_blank" 
+                         class="badge bg-secondary text-decoration-none"
+                         title="{{ internal_port }} → {{ host_port }}">
+                        :{{ host_port }}
+                      </a>
+                    {% endfor %}
+                  {% endif %}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endfor %}
+              </td>
+              <td class="btn-cell">
+                <button type="submit" formaction="{{ url_for('main.logs') }}" 
+                        name="logs" value="{{ container.id }}" 
+                        class="btn btn-outline-primary btn-sm"
+                        title="View logs" data-bs-toggle="tooltip">
+                  <i class="fa-solid fa-file-lines" aria-hidden="true"></i> Logs
+                </button>
+              </td>
+              <td class="btn-cell">
+                <button type="submit" formaction="{{ url_for('main.comma') }}" 
+                        name="comma" value="{{ container.id }}" 
+                        class="btn btn-outline-success btn-sm"
+                        title="Open terminal" data-bs-toggle="tooltip">
+                  <i class="fa-solid fa-terminal" aria-hidden="true"></i> Terminal
+                </button>
+              </td>
+              <td class="btn-cell">
+                <button type="submit" formaction="{{ url_for('main.inspect') }}" 
+                        name="inspect" value="{{ container.id }}" 
+                        class="btn btn-outline-info btn-sm"
+                        title="Inspect container" data-bs-toggle="tooltip">
+                  <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Inspect
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center py-4 text-muted">
+                <i class="fa-solid fa-inbox fa-2x mb-2" aria-hidden="true"></i>
+                <p class="mb-0">No containers found</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize DataTable
+    var dt = $('#containersTable').DataTable({
+      stateSave: true,
+      order: [[1, 'asc']],
+      dom: 'lrtip', // include length (rows-per-page) control, remove built-in search box
+      columnDefs: [
+        { targets: [0, 5, 6, 7], orderable: false, searchable: false }
+      ],
+      language: {
+        emptyTable: 'No containers available'
+      },
+      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
+      pageLength: 25
+    });
+
+    // Custom table search with debounce
+    var searchInput = document.getElementById('tableSearch');
+    var searchTimeout = null;
+    searchInput.addEventListener('input', function(e){
+      clearTimeout(searchTimeout);
+      var val = e.target.value;
+      searchTimeout = setTimeout(function(){ dt.search(val).draw(); }, 250);
+    });
+
+    // Move the DataTables length control next to the search input for better UX
+    (function moveLengthControl(){
+      var lengthDiv = document.querySelector('.dataTables_length');
+      var wrapper = document.querySelector('.dt-search-wrapper');
+      if (!lengthDiv || !wrapper) return;
+      var sel = lengthDiv.querySelector('select');
+      if (!sel) return;
+
+      // Build inline container
+      var inline = document.createElement('div');
+      inline.className = 'dt-length-inline d-flex align-items-center';
+      var lab = document.createElement('span');
+      lab.className = 'small text-muted me-2 d-none d-sm-inline';
+      lab.textContent = 'Show:';
+
+      // style select
+      sel.classList.add('form-select', 'form-select-sm');
+      sel.style.height = '32px';
+      sel.style.minWidth = '72px';
+
+      inline.appendChild(lab);
+      inline.appendChild(sel);
+
+      wrapper.appendChild(inline);
+      // Hide the original label container
+      lengthDiv.style.display = 'none';
+    })();
+
+    // Select all checkbox
+    document.getElementById('selectAll').addEventListener('change', function() {
+      const checkboxes = document.querySelectorAll('input[name="interests"]');
+      checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+  });
+</script>
+{% endblock %}

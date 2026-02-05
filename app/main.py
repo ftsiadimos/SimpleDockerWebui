@@ -81,23 +81,21 @@ def conf(use_cache=True):
 
 @main_bp.route('/', methods=['GET', 'POST'])
 def index():
-    """Display the main dashboard with all containers."""
+    """Dashboard: show summary metrics and recent activity."""
     select_form = SelectServerForm()
     servers = DockerServer.query.all()
     active_server = DockerServer.get_active()
-    
+
     def get_server_label(s):
-        # Only show the friendly display name in the dropdown
         return s.display_name
-    
+
     select_form.server.choices = [(s.id, get_server_label(s)) for s in servers]
-    
+
     if request.method == 'POST' and 'server' in request.form:
         server_id = None
         if select_form.validate_on_submit():
             server_id = select_form.server.data
         else:
-            # Fallback: sometimes client-side submits may not validate due to CSRF or choice mismatch.
             raw = request.form.get('server')
             try:
                 server_id = int(raw) if raw is not None else None
@@ -115,28 +113,83 @@ def index():
             try:
                 client = docker.DockerClient(base_url=base_url, timeout=10)
                 client.ping()
-                # Success, set active
                 DockerServer.set_active(server_id)
                 _docker_client_cache.clear()
                 flash(f'Connected to "{server.display_name}".', 'success')
             except docker.errors.DockerException as exc:
                 flash(f"Cannot connect to Docker at {base_url}: {exc}", 'warning')
-                # Don't set active
         return redirect(url_for('main.index'))
-    
+
     # Ensure there's an active server
     if not active_server and servers:
         active_server = servers[0]
         DockerServer.set_active(active_server.id)
-    
+
     if active_server:
         select_form.server.data = active_server.id
-    
+
+    servers_count = len(servers)
+    containers_count = 0
+    running_count = 0
+    images_count = 0
+
+    try:
+        client, serverurl = conf()
+        raw_containers = client.containers.list(all=True)
+        containers_count = len(raw_containers)
+        running_count = sum(1 for c in raw_containers if getattr(c, 'status', '') == 'running')
+        images_count = len({ (c.attrs.get('Config', {}).get('Image', '') if getattr(c, 'attrs', None) else '') for c in raw_containers })
+
+        recent_activity = []
+        for c in raw_containers[-8:]:
+            try:
+                img = c.attrs.get('Config', {}).get('Image', '') if getattr(c, 'attrs', None) else ''
+            except Exception:
+                img = ''
+            recent_activity.append({
+                'name': getattr(c, 'name', '') or '',
+                'status': getattr(c, 'status', '') or '',
+                'image': img,
+            })
+
+        return render_template('index.html',
+                               servers_count=servers_count,
+                               containers_count=containers_count,
+                               running_count=running_count,
+                               images_count=images_count,
+                               recent_activity=recent_activity,
+                               select_form=select_form)
+    except ValueError as err:
+        flash(str(err), 'warning')
+        return render_template('index.html',
+                               servers_count=servers_count,
+                               containers_count=containers_count,
+                               running_count=running_count,
+                               images_count=images_count,
+                               recent_activity=[],
+                               select_form=select_form)
+
+
+
+
+@main_bp.route('/containers', methods=['GET', 'POST'])
+def containers():
+    """Full containers listing (moved from index)."""
+    select_form = SelectServerForm()
+    servers = DockerServer.query.all()
+    active_server = DockerServer.get_active()
+
+    def get_server_label(s):
+        return s.display_name
+
+    select_form.server.choices = [(s.id, get_server_label(s)) for s in servers]
+    if active_server:
+        select_form.server.data = active_server.id
+
     try:
         client, serverurl = conf()
         raw_containers = client.containers.list(all=True)
 
-        # Build lightweight container summaries
         containers = []
         for c in raw_containers:
             try:
@@ -151,12 +204,10 @@ def index():
                 'image': image_name,
             })
 
-        return render_template('index.html', containers=containers, serverurl=serverurl, select_form=select_form)
+        return render_template('containers.html', containers=containers, serverurl=serverurl, select_form=select_form)
     except ValueError as err:
         flash(str(err), 'warning')
-        serverurl = active_server
-        containers = []
-        return render_template('index.html', containers=containers, serverurl=serverurl, select_form=select_form)
+        return render_template('containers.html', containers=[], serverurl=active_server, select_form=select_form)
 
 
 @main_bp.route('/about', methods=['GET'])
@@ -666,7 +717,7 @@ def submit_remove():
 
     if not container_ids:
         flash('No containers selected.', 'warning')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.containers'))
 
     action_map = {
         "Delete": (lambda c: c.remove(force=True), "deleted"),
@@ -677,7 +728,7 @@ def submit_remove():
 
     if action not in action_map:
         flash('Invalid action specified.', 'danger')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.containers'))
 
     try:
         client, _ = conf()
@@ -700,7 +751,10 @@ def submit_remove():
         for error in errors:
             flash(error, 'danger')
 
+        return redirect(url_for('main.containers'))
+
     except ValueError as e:
         flash(str(e), 'danger')
+        return redirect(url_for('main.containers'))
 
-    return redirect(url_for('main.index'))
+    return redirect(url_for('main.containers'))

@@ -5,125 +5,116 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Lightweight Docker container management web interface">
     <meta name="theme-color" content="#212529">
-    
-    <title>{% if title %}{{ title }} - {% endif %}Docker Manager</title>
+
+    <title>{% if title %}{{ title }} - {% endif %}LightDockerWebUI</title>
 
     <!-- Favicon -->
     <link rel="icon" href="{{ url_for('static', filename='dockermanager.png') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='dockermanager.png') }}">
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min1.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dataTables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
-    <!-- Scripts (defer for better performance) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Scripts -->
     <script src="{{ url_for('static', filename='jquery-3.6.0.min.js') }}"></script>
     <script src="{{ url_for('static', filename='jquery.dataTables.js') }}" defer></script>
     <script src="{{ url_for('static', filename='dataTables.bootstrap5.js') }}" defer></script>
     <script src="{{ url_for('static', filename='bootstrap.min.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='site.js') }}" defer></script>
   </head>
 
-  <body class="d-flex flex-column min-vh-100">
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" role="navigation">
-      <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('main.index') }}">
-          <img src="{{ url_for('static', filename='dockermanager.png') }}"
-               alt=""
-               height="30"
-               class="me-2">
-          <span>Docker Manager</span>
-        </a>
-        <button class="navbar-toggler" type="button" 
-                data-bs-toggle="collapse"
-                data-bs-target="#navbarMain"
-                aria-controls="navbarMain"
-                aria-expanded="false"
-                aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarMain">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('main.index') }}">
-                <i class="fa fa-home" aria-hidden="true"></i> Home
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('main.compose') }}">
-                <i class="fa fa-cogs" aria-hidden="true"></i> Compose
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('main.addcon') }}">
-                <i class="fa fa-cog" aria-hidden="true"></i> Config
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('main.about') }}">
-                <i class="fa fa-info-circle" aria-hidden="true"></i> About
-              </a>
-            </li>
-          </ul>
+  <body class="d-flex flex-column">
+    <div class="d-flex" id="app">
+      <!-- Sidebar -->
+      <nav id="sidebar" class="bg-dark text-white sidebar">
+        <div class="sidebar-header p-3 d-flex align-items-center">
+          <div class="d-flex align-items-center">
+            <img src="{{ url_for('static', filename='dockermanager.png') }}" height="28" class="me-2" alt="logo">
+            <strong>LightDockerWebUI</strong>
+            <!-- Test icon -->
+          
+          </div>
         </div>
-      </div>
-    </nav>
+        <ul class="nav flex-column p-2">
+          <!-- Overview Section -->
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint == 'main.index' %}active{% endif %}" href="{{ url_for('main.index') }}">
+              <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+            </a>
+          </li>
+          
+          <!-- Management Section -->
+          <li class="nav-header text-white-50 px-3 py-2 mt-3 mb-1">
+            <small><i class="fas fa-cogs me-1"></i>MANAGEMENT</small>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint == 'main.containers' %}active{% endif %}" href="{{ url_for('main.containers') }}">
+              <i class="fab fa-docker me-2"></i> Containers
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint == 'main.compose' %}active{% endif %}" href="{{ url_for('main.compose') }}">
+              <i class="fas fa-layer-group me-2"></i> Compose
+            </a>
+          </li>
+          
+          <!-- Configuration Section -->
+          <li class="nav-header text-white-50 px-3 py-2 mt-3 mb-1">
+            <small><i class="fas fa-sliders-h me-1"></i>CONFIGURATION</small>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint == 'main.addcon' %}active{% endif %}" href="{{ url_for('main.addcon') }}">
+              <i class="fas fa-server me-2"></i> Servers
+            </a>
+          </li>
+          
+          <!-- Info Section -->
+          <li class="nav-header text-white-50 px-3 py-2 mt-3 mb-1">
+            <small><i class="fas fa-info-circle me-1"></i>INFO</small>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint == 'main.about' %}active{% endif %}" href="{{ url_for('main.about') }}">
+              <i class="fas fa-info-circle me-2"></i> About
+            </a>
+          </li>
+        </ul>
+      </nav>
 
-    <!-- Flash Messages -->
-    <div class="container mt-2">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }} alert-dismissible fade show" role="alert">
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      <!-- Page content -->
+      <div class="flex-grow-1">
+        <!-- Topbar -->
+        <nav class="navbar navbar-expand navbar-light bg-light border-bottom">
+          <div class="container-fluid">
+            <div class="d-none d-md-flex align-items-center me-3" id="pageTitleWrapper">
+              <span id="pageTitle" class="navbar-page-title h6 mb-0">{% block page_title %}{% endblock %}</span>
             </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
+            <div class="ms-auto d-flex align-items-center">
+              {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }} alert-dismissible fade show mb-0 me-2" role="alert">
+                      {{ message }}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                  {% endfor %}
+                {% endif %}
+              {% endwith %}
+            </div>
+          </div>
+        </nav>
+
+        <main class="container-fluid p-3">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
     </div>
 
-    <!-- Main Content -->
-    <main class="container mt-2 flex-grow-1">
-      {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-3 mt-auto">
-      <div class="container">
-        <small>
-          &copy; {{ now().year if now is defined else 2025 }} 
-          <a href="https://github.com/ftsiadimos/simpledockerwebui" class="text-white text-decoration-none">ftsiadimos</a>
-          &middot; LightDockerWebUI
-        </small>
-      </div>
-    </footer>
-
-    <!-- Auto-refresh on mobile rotation -->
-    <script>
-      (function(){
-        // Only enable on mobile devices
-        if (!/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) return;
-        let last = (window.innerWidth > window.innerHeight) ? 'landscape' : 'portrait';
-        let timeout = null;
-        function handleChange(){
-          const now = (window.innerWidth > window.innerHeight) ? 'landscape' : 'portrait';
-          if (now === last) return; // no real orientation change
-          last = now;
-          clearTimeout(timeout);
-          timeout = setTimeout(function(){
-            try { sessionStorage.setItem('orientation_reloaded', '1'); } catch(e){}
-            // Use replace to avoid polluting history
-            location.replace(location.href);
-          }, 250);
-        }
-        window.addEventListener('orientationchange', handleChange, false);
-        window.addEventListener('resize', handleChange, false);
-        // Clean the flag on fresh load
-        try { sessionStorage.removeItem('orientation_reloaded'); } catch(e){}
-      })();
-    </script>
+    <!-- Toast container for flash messages -->
+    <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
   </body>
 </html>
 

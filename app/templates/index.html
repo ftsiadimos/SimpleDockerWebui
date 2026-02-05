@@ -1,306 +1,143 @@
 {% extends 'base.html' %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
-<style>
-  /* Table cell styling */
-  .wrap-cell {
-    padding-right: 0.5rem;
-    vertical-align: middle;
-  }
-  .wrap-cell .ellipsis {
-    display: inline-block;
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    vertical-align: middle;
-  }
-  .btn-cell {
-    text-align: center;
-    white-space: nowrap;
-  }
-  /* Status badges */
-  .status-running { color: #198754; font-weight: 500; }
-  .status-exited { color: #dc3545; }
-  .status-paused { color: #ffc107; }
-  /* Action buttons row with improved grouping and colors */
-  .action-buttons {
-    display: flex;
-    justify-content: flex-start;
-    margin-top: 1rem;
-    padding: 1rem 0;
-    border-top: 2px solid #dee2e6;
-    background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
-  }
-  .btn-group-custom {
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-  }
-  .btn-custom {
-    border-radius: 6px !important;
-    font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
-    padding: 0.5rem 1rem;
-  }
-  .btn-custom:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  }
-  .btn-start { background: linear-gradient(45deg, #28a745, #20c997); border-color: #28a745; color: white; }
-  .btn-stop { background: linear-gradient(45deg, #ffc107, #fd7e14); border-color: #ffc107; color: white; }
-  .btn-restart { background: linear-gradient(45deg, #17a2b8, #6f42c1); border-color: #17a2b8; color: white; }
-  .btn-delete { background: linear-gradient(45deg, #dc3545, #e83e8c); border-color: #dc3545; color: white; }
-  .btn-stats { background: linear-gradient(45deg, #6f42c1, #e91e63); border-color: #6f42c1; color: white; }
-  .btn-inspect { background: linear-gradient(45deg, #17a2b8, #28a745); border-color: #17a2b8; color: white; }
-  /* Responsive adjustments */
-  @media (max-width: 992px) {
-    .wrap-cell .ellipsis { max-width: 120px; }
-  }
-  @media (max-width: 576px) {
-    .wrap-cell .ellipsis { max-width: 80px; }
-    .action-buttons { justify-content: center; }
-  }
-/* --- Custom search styling --- */
-  .dt-search-wrapper { border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-  .dt-search-wrapper { display:flex; align-items:center; gap:0.5rem; }
-  .dt-search-wrapper .input-group-text { background: #fff; border-right: 1px solid rgba(0,0,0,0.06); }
-  #tableSearch { background: linear-gradient(90deg, #ffffff, #f6f9ff); border: none; }
-  #tableSearch::placeholder { color: #8fa6c1; opacity: 1; }
 
-  /* Make DataTables length control compact */
-  .dataTables_length { margin-left: 8px; }
-  .dataTables_length select { height: 32px; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.08); }
-  .dt-length-inline select { margin-right: 6px; }
-
-  @media (max-width: 576px) {
-    .dt-search-wrapper { max-width: 180px !important; }
-    .dataTables_length { display: none; } /* hide on tiny screens to save space */
-    .card-header label { display: none; }
-  }
-
-  /* Server select sizing to show full names in header */
-  .card-header .form-select {
-    min-width: 140px;
-    max-width: 520px;
-    white-space: nowrap;
-    box-sizing: border-box; /* ensure padding included in width calc */
-    padding-right: 40px; /* leave space for the native dropdown arrow */
-    background-position: right 10px center; /* keep arrow visually outside text */
-    background-repeat: no-repeat;
-  }
-
-  /* On very small screens we let the select take 100% width */
-  @media (max-width: 479px) {
-    .card-header .form-select { width: 100%; padding-right: 36px; }
-  }
-  </style>
-
-<div class="card shadow-sm">
-  <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-    <h5 class="mb-0"><i class="fa fa-docker" aria-hidden="true"></i> Containers</h5>
-    <div class="d-flex align-items-center gap-2">
-      {% if select_form.server.choices %}
-      <form action="{{ url_for('main.index') }}" method="post" class="d-flex align-items-center gap-2">
-        {{ select_form.hidden_tag() }}
-        <label for="server" class="text-white-50 mb-0 me-1"><i class="fa fa-server" aria-hidden="true"></i></label>
-        {{ select_form.server(class="form-select form-select-sm", id="server", onchange="this.form.submit()") }}
-      </form>
-      {% endif %}
-      <!-- Custom search for containers -->
-      <div class="input-group input-group-sm dt-search-wrapper" style="max-width:420px;">
-
-        <input id="tableSearch" type="search" class="form-control form-control-sm border-0" placeholder="Search containers..." aria-label="Search containers">
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <form action="{{ url_for('main.index') }}" method="post" class="d-flex align-items-center gap-2">
+    {{ select_form.hidden_tag() }}
+    {% if select_form.server.choices %}
+      <div class="input-group">
+        <label class="input-group-text" for="server-select"><i class="fa-solid fa-server"></i></label>
+        {{ select_form.server(class="form-select", id="server-select", onchange="this.form.submit()") }}
       </div>
+    {% endif %}
+  </form>
+</div>
 
-
-    </div>
-  </div>
-  <div class="card-body p-0">
-    <form action="{{ url_for('main.submit_remove') }}" method="post" id="containerForm">
-      <!-- Action Buttons -->
-      {% if containers %}
-      <div class="action-buttons px-3 py-2">
-        <div class="btn-group-custom">
-          <button type="submit" name="submit_button" value="Start" class="btn btn-custom btn-start btn-sm">
-            <i class="fa fa-play" aria-hidden="true"></i> Start
-          </button>
-          <button type="submit" name="submit_button" value="Stop" class="btn btn-custom btn-stop btn-sm">
-            <i class="fa fa-stop" aria-hidden="true"></i> Stop
-          </button>
-          <button type="submit" name="submit_button" value="Restart" class="btn btn-custom btn-restart btn-sm">
-            <i class="fa fa-refresh" aria-hidden="true"></i> Restart
-          </button>
-          <button type="submit" name="submit_button" value="Delete" class="btn btn-custom btn-delete btn-sm"
-                  onclick="return confirm('Are you sure you want to delete the selected container(s)?');">
-            <i class="fa fa-trash" aria-hidden="true"></i> Delete
-          </button>
-          <button type="submit" formaction="{{ url_for('main.stats') }}" class="btn btn-custom btn-stats btn-sm">
-            <i class="fa fa-bar-chart" aria-hidden="true"></i> Stats
-          </button>
+<div class="row content-cards g-4 mb-5">
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-server text-primary me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Servers</span>
+          </div>
+          <div class="h2 mb-0 text-primary">{{ servers_count }}</div>
         </div>
       </div>
-      {% endif %}
-      <div class="table-responsive">
-        <table id="containersTable" class="table table-striped table-hover mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col" style="width: 40px;">
-                <input type="checkbox" id="selectAll" aria-label="Select all containers">
-              </th>
-              <th scope="col">Name</th>
-              <th scope="col" class="d-none d-md-table-cell">Image</th>
-              <th scope="col">Status</th>
-              <th scope="col" class="d-none d-lg-table-cell">Ports</th>
-              <th scope="col" style="width: 80px;">Logs</th>
-              <th scope="col" style="width: 80px;">Terminal</th>
-              <th scope="col" style="width: 80px;">Inspect</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for container in containers %}
-            <tr>
-              <td>
-                <input type="checkbox" name="interests" value="{{ container.id }}" 
-                       aria-label="Select {{ container.name }}">
-              </td>
-              <td class="wrap-cell">
-                <span class="ellipsis" title="{{ container.name }}">{{ container.name }}</span>
-              </td>
-              <td class="wrap-cell d-none d-md-table-cell">
-                {% set image_name = container.image %}
-                <span class="ellipsis" title="{{ image_name }}">{{ image_name }}</span>
-              </td>
-              <td class="wrap-cell">
-                {% if 'running' in container.status.lower() %}
-                  <span class="status-running" title="{{ container.status }}">● Running</span>
-                {% elif 'exited' in container.status.lower() %}
-                  <span class="status-exited" title="{{ container.status }}">● Exited</span>
-                {% elif 'paused' in container.status.lower() %}
-                  <span class="status-paused" title="{{ container.status }}">● Paused</span>
-                {% else %}
-                  <span class="ellipsis" title="{{ container.status }}">{{ container.status }}</span>
-                {% endif %}
-              </td>
-              <td class="wrap-cell d-none d-lg-table-cell">
-                {% set ports = container.ports %}
-                {% for internal_port, host_ports in ports.items() %}
-                  {% if host_ports %}
-                    {% for host_port_info in host_ports %}
-                      {% set host_port = host_port_info.get('HostPort') %}
-                      <a href="http://{{ serverurl.host if serverurl and serverurl.host else 'localhost' }}:{{ host_port }}" 
-                         target="_blank" 
-                         class="badge bg-secondary text-decoration-none"
-                         title="{{ internal_port }} → {{ host_port }}">
-                        :{{ host_port }}
-                      </a>
-                    {% endfor %}
-                  {% endif %}
-                {% else %}
-                  <span class="text-muted">—</span>
-                {% endfor %}
-              </td>
-              <td class="btn-cell">
-                <button type="submit" formaction="{{ url_for('main.logs') }}" 
-                        name="logs" value="{{ container.id }}" 
-                        class="btn btn-outline-primary btn-sm"
-                        title="View logs">
-                  <i class="fa fa-file-text-o" aria-hidden="true"></i> Logs
-                </button>
-              </td>
-              <td class="btn-cell">
-                <button type="submit" formaction="{{ url_for('main.comma') }}" 
-                        name="comma" value="{{ container.id }}" 
-                        class="btn btn-outline-success btn-sm"
-                        title="Open terminal">
-                  <i class="fa fa-terminal" aria-hidden="true"></i> Terminal
-                </button>
-              </td>
-              <td class="btn-cell">
-                <button type="submit" formaction="{{ url_for('main.inspect') }}" 
-                        name="inspect" value="{{ container.id }}" 
-                        class="btn btn-outline-info btn-sm"
-                        title="Inspect container">
-                  <i class="fa fa-info-circle" aria-hidden="true"></i> Inspect
-                </button>
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="8" class="text-center py-4 text-muted">
-                <i class="fa fa-inbox fa-2x mb-2" aria-hidden="true"></i>
-                <p class="mb-0">No containers found</p>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-brands fa-docker text-info me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Containers</span>
+          </div>
+          <div class="h2 mb-0 text-info">{{ containers_count }}</div>
+        </div>
       </div>
-    </form>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-play-circle text-success me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Running</span>
+          </div>
+          <div class="h2 mb-0 text-success">{{ running_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-box text-warning me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Images</span>
+          </div>
+          <div class="h2 mb-0 text-warning">{{ images_count }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialize DataTable
-    var dt = $('#containersTable').DataTable({
-      stateSave: true,
-      order: [[1, 'asc']],
-      dom: 'lrtip', // include length (rows-per-page) control, remove built-in search box
-      columnDefs: [
-        { targets: [0, 5, 6, 7], orderable: false, searchable: false }
-      ],
-      language: {
-        emptyTable: 'No containers available'
-      },
-      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
-      pageLength: 25
-    });
+<div class="row mb-4">
+  <div class="col-md-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-clock-rotate-left text-muted me-2"></i>Recent Activity</h5>
+        <a href="{{ url_for('main.containers') }}" class="btn btn-sm btn-outline-primary">
+          <i class="fa-solid fa-arrow-right me-1"></i>View all containers
+        </a>
+      </div>
+      <div class="card-body">
+        {% if recent_activity %}
+          <div class="list-group list-group-flush">
+            {% for item in recent_activity %}
+              <div class="list-group-item border-0 px-0 d-flex justify-content-between align-items-start">
+                <div class="d-flex align-items-start">
+                  <div class="me-3">
+                    {% if 'running' in item.status.lower() %}
+                      <i class="fa-solid fa-circle text-success fs-6"></i>
+                    {% elif 'exited' in item.status.lower() %}
+                      <i class="fa-solid fa-circle text-danger fs-6"></i>
+                    {% else %}
+                      <i class="fa-solid fa-circle text-warning fs-6"></i>
+                    {% endif %}
+                  </div>
+                  <div>
+                    <div class="fw-semibold">{{ item.name or '—' }}</div>
+                    <div class="small text-muted">{{ item.image or '' }}</div>
+                  </div>
+                </div>
+                <div>
+                  <span class="badge {% if 'running' in item.status.lower() %}bg-success{% elif 'exited' in item.status.lower() %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                    {{ item.status }}
+                  </span>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4">
+            <i class="fa-solid fa-inbox text-muted fs-1 mb-3"></i>
+            <p class="text-muted mb-0">No recent activity</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-light border-0">
+        <h5 class="mb-0"><i class="fa-solid fa-bolt text-muted me-2"></i>Quick Actions</h5>
+      </div>
+      <div class="card-body d-flex flex-column gap-3">
+        <a href="{{ url_for('main.compose') }}" class="btn btn-outline-primary d-flex align-items-center">
+          <i class="fa-solid fa-layer-group me-2"></i>
+          <span>Compose Projects</span>
+        </a>
+        <a href="{{ url_for('main.containers') }}" class="btn btn-outline-secondary d-flex align-items-center">
+          <i class="fa-brands fa-docker me-2"></i>
+          <span>Manage Containers</span>
+        </a>
+        <a href="{{ url_for('main.addcon') }}" class="btn btn-outline-secondary d-flex align-items-center">
+          <i class="fa-solid fa-server me-2"></i>
+          <span>Manage Servers</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
 
-    // Custom table search with debounce
-    var searchInput = document.getElementById('tableSearch');
-    var searchTimeout = null;
-    searchInput.addEventListener('input', function(e){
-      clearTimeout(searchTimeout);
-      var val = e.target.value;
-      searchTimeout = setTimeout(function(){ dt.search(val).draw(); }, 250);
-    });
-
-    // Move the DataTables length control next to the search input for better UX
-    (function moveLengthControl(){
-      var lengthDiv = document.querySelector('.dataTables_length');
-      var wrapper = document.querySelector('.dt-search-wrapper');
-      if (!lengthDiv || !wrapper) return;
-      var sel = lengthDiv.querySelector('select');
-      if (!sel) return;
-
-      // Build inline container
-      var inline = document.createElement('div');
-      inline.className = 'dt-length-inline d-flex align-items-center';
-      var lab = document.createElement('span');
-      lab.className = 'small text-muted me-2 d-none d-sm-inline';
-      lab.textContent = 'Rows:';
-
-      // style select
-      sel.classList.add('form-select', 'form-select-sm');
-      sel.style.height = '32px';
-      sel.style.minWidth = '72px';
-
-      inline.appendChild(lab);
-      inline.appendChild(sel);
-
-      wrapper.appendChild(inline);
-      // Hide the original label container
-      lengthDiv.style.display = 'none';
-    })();
-
-    // Select all checkbox
-    document.getElementById('selectAll').addEventListener('change', function() {
-      const checkboxes = document.querySelectorAll('input[name="interests"]');
-      checkboxes.forEach(cb => cb.checked = this.checked);
-    });
-  });
-</script>
 {% endblock %}
 

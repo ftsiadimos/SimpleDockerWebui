@@ -1,43 +1,75 @@
 {% extends 'base.html' %}
+{% block page_title %}About{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-8 col-lg-6">
-    <div class="card shadow-sm text-center">
+    <div class="card shadow-sm border-0 text-center">
       <div class="card-body py-5">
-        <img src="{{ url_for('static', filename='dockermanager.png') }}"
-             alt="Docker Manager Logo"
-             height="100"
-             class="mb-4">
+        <div class="mb-4">
+          <img src="{{ url_for('static', filename='dockermanager.png') }}"
+               alt="Docker Manager Logo"
+               height="80"
+               class="mb-3">
+          <p class="lead text-muted mb-4">
+            A lightweight, user-friendly web interface for monitoring and managing your Docker containers.
+          </p>
+        </div>
         
-        <h1 class="h3 mb-3">LightDockerWebUI</h1>
-        <p class="lead text-muted mb-4">
-          A lightweight, user-friendly web interface for monitoring and managing your Docker containers.
-        </p>
+        <div class="row g-3 mb-4">
+          <div class="col-6">
+            <div class="p-3 bg-light rounded">
+              <i class="fa-solid fa-play-circle text-success fs-2 mb-2"></i>
+              <h6 class="mb-1">Start/Stop</h6>
+              <small class="text-muted">Control container lifecycle</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 bg-light rounded">
+              <i class="fa-solid fa-terminal text-info fs-2 mb-2"></i>
+              <h6 class="mb-1">Terminal</h6>
+              <small class="text-muted">Interactive shell access</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 bg-light rounded">
+              <i class="fa-solid fa-chart-bar text-warning fs-2 mb-2"></i>
+              <h6 class="mb-1">Monitoring</h6>
+              <small class="text-muted">Real-time stats & logs</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-3 bg-light rounded">
+              <i class="fa-solid fa-server text-primary fs-2 mb-2"></i>
+              <h6 class="mb-1">Multi-host</h6>
+              <small class="text-muted">Remote Docker support</small>
+            </div>
+          </div>
+        </div>
         
         <hr class="my-4">
         
-        <h5 class="mb-3">Features</h5>
-        <ul class="list-unstyled text-start mx-auto" style="max-width: 300px;">
-          <li class="mb-2"><i class="fa fa-check text-success" aria-hidden="true"></i> View all containers</li>
-          <li class="mb-2"><i class="fa fa-check text-success" aria-hidden="true"></i> Start, stop, restart containers</li>
-          <li class="mb-2"><i class="fa fa-check text-success" aria-hidden="true"></i> View container logs</li>
-          <li class="mb-2"><i class="fa fa-check text-success" aria-hidden="true"></i> Interactive terminal access</li>
-          <li class="mb-2"><i class="fa fa-check text-success" aria-hidden="true"></i> Remote Docker host support</li>
-        </ul>
-        
-        <hr class="my-4">
-        
-        <p class="mb-3">Found an issue? Have a suggestion?</p>
-        <a href="https://github.com/ftsiadimos/simpledockerwebui" 
-           target="_blank" 
-           rel="noopener noreferrer"
-           class="btn btn-dark btn-lg">
-          <i class="fa fa-github" aria-hidden="true"></i> View on GitHub
-        </a>
+        <div class="text-center">
+          <p class="mb-3 text-muted">Found an issue or have a suggestion?</p>
+          <a href="https://github.com/ftsiadimos/simpledockerwebui" 
+             target="_blank" 
+             rel="noopener noreferrer"
+             class="btn btn-dark btn-lg px-4">
+            <i class="fa-brands fa-github me-2"></i>View on GitHub
+          </a>
+        </div>
       </div>
-      <div class="card-footer bg-light">
-        <small class="text-muted">Version 1.0.5 &middot; MIT License</small>
+      <div class="card-footer bg-light border-0">
+        <div class="row text-center">
+          <div class="col-6">
+            <small class="text-muted">Version</small>
+            <div class="fw-semibold">2.0.0</div>
+          </div>
+          <div class="col-6">
+            <small class="text-muted">License</small>
+            <div class="fw-semibold">MIT</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

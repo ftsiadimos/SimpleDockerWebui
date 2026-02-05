@@ -1,15 +1,20 @@
 {% extends 'base.html' %}
+{% block page_title %}Servers{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-12 col-lg-10">
-    <div class="row g-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-muted mb-0">Manage your Docker server connections</p>
+  </div>
+</div>
+
+<div class="row g-4">
       
       <!-- Select Server Card -->
       <div class="col-12 col-md-6">
-        <div class="card shadow-sm h-100">
-          <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="fa fa-plug" aria-hidden="true"></i> Select Docker Server</h5>
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-primary text-white border-0">
+            <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Select Active Server</h5>
           </div>
           <div class="card-body">
             {% if servers %}
@@ -60,7 +65,7 @@
             </div>
             {% else %}
             <div class="text-center text-muted py-4">
-              <i class="fa fa-server fa-3x mb-3" aria-hidden="true"></i>
+              <i class="fa-solid fa-server fa-3x mb-3" aria-hidden="true"></i>
               <p>No servers configured yet.<br>Add your first server using the form.</p>
             </div>
             {% endif %}
@@ -70,9 +75,9 @@
       
       <!-- Add Server Card -->
       <div class="col-12 col-md-6">
-        <div class="card shadow-sm h-100">
-          <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="fa fa-plus-circle" aria-hidden="true"></i> Add New Server</h5>
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-header bg-success text-white border-0">
+            <h5 class="mb-0"><i class="fa-solid fa-circle-plus me-2"></i>Add New Server</h5>
           </div>
           <div class="card-body">
             <form action="" method="post" novalidate>
@@ -80,7 +85,7 @@
               
               <div class="mb-3">
                 {{ add_form.display_name.label(class="form-label") }}
-                {{ add_form.display_name(class="form-control") }}
+                {{ add_form.display_name(class="form-control" + (" is-invalid" if add_form.display_name.errors else "")) }}
                 {% if add_form.display_name.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in add_form.display_name.errors %}{{ error }}{% endfor %}
@@ -91,7 +96,7 @@
               
               <div class="mb-3">
                 {{ add_form.host.label(class="form-label") }}
-                {{ add_form.host(class="form-control") }}
+                {{ add_form.host(class="form-control" + (" is-invalid" if add_form.host.errors else "")) }}
                 {% if add_form.host.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in add_form.host.errors %}{{ error }}{% endfor %}
@@ -102,7 +107,7 @@
               
               <div class="mb-3">
                 {{ add_form.port.label(class="form-label") }}
-                {{ add_form.port(class="form-control") }}
+                {{ add_form.port(class="form-control" + (" is-invalid" if add_form.port.errors else "")) }}
                 {% if add_form.port.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in add_form.port.errors %}{{ error }}{% endfor %}
@@ -113,7 +118,7 @@
               
               <div class="mb-3">
                 {{ add_form.user.label(class="form-label") }}
-                {{ add_form.user(class="form-control") }}
+                {{ add_form.user(class="form-control" + (" is-invalid" if add_form.user.errors else "")) }}
                 {% if add_form.user.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in add_form.user.errors %}{{ error }}{% endfor %}
@@ -124,7 +129,7 @@
               
               <div class="mb-3">
                 {{ add_form.password.label(class="form-label") }}
-                {{ add_form.password(class="form-control") }}
+                {{ add_form.password(class="form-control" + (" is-invalid" if add_form.password.errors else "")) }}
                 {% if add_form.password.errors %}
                   <div class="invalid-feedback d-block">
                     {% for error in add_form.password.errors %}{{ error }}{% endfor %}
@@ -145,8 +150,8 @@
     
     <!-- Back button -->
     <div class="text-center mt-4">
-      <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
-        <i class="fa fa-arrow-left" aria-hidden="true"></i> Back to Dashboard
+      <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Back to Dashboard">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Dashboard
       </a>
     </div>
   </div>
