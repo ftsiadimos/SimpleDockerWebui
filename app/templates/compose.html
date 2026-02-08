@@ -40,8 +40,8 @@
       <table class="table table-hover mb-0" id="compose-table">
         <thead class="table-light">
           <tr>
-            <th class="border-0 fw-semibold"><i class="fa-solid fa-folder me-2 text-muted"></i>Path</th>
             <th class="border-0 fw-semibold"><i class="fa-solid fa-cubes me-2 text-muted"></i>Services</th>
+            <th class="border-0 fw-semibold"><i class="fa-solid fa-folder me-2 text-muted"></i>Path</th>
             <th class="border-0 fw-semibold"><i class="fa-solid fa-circle me-2 text-muted"></i>Status</th>
             <th class="border-0 fw-semibold text-end">Actions</th>
           </tr>
@@ -50,15 +50,14 @@
           {% for project in compose_projects %}
           <tr>
             <td class="align-middle">
-              <div class="fw-semibold">{{ project.path.split('/')[-1] }}</div>
-              <small class="text-muted">{{ project.path }}</small>
-            </td>
-            <td class="align-middle">
               <div class="d-flex flex-wrap gap-1">
                 {% for service in project.services %}
                 <span class="badge bg-light text-dark">{{ service }}</span>
                 {% endfor %}
               </div>
+            </td>
+            <td class="align-middle">
+              <div class="fw-semibold">{{ project.path }}</div>
             </td>
             <td class="align-middle">
               {% if project.running %}
