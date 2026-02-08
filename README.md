@@ -69,10 +69,7 @@ LightDockerWebUI is a **clean, fast, and simple** web-based Docker management to
 <td width="50%">
 
 ### 💻 Web Terminal
-- Interactive shell access
-- Full terminal emulation
-- Execute commands directly
-- No SSH required
+- Interactive shell access to remote servers via **SSH**
 
 </td>
 </tr>
@@ -197,9 +194,13 @@ LightDockerWebUI supports **multiple Docker servers**. Configure them through th
 
 1. Click **Config** in the navigation bar
 2. Add servers with a display name and connection details:
-   - **Local**: Leave host empty to use \`/var/run/docker.sock\`
+   - **Local**: Leave host empty to use `/var/run/docker.sock`
    - **Remote**: Enter IP/hostname and port (default: 2375 or 2376)
 3. Select the active server from the dropdown
+
+### Server Terminal (SSH)
+
+- A full interactive **server terminal** is available via the **Terminal** menu (under Configuration)
 
 ### Environment Variables
 
@@ -298,15 +299,6 @@ Contributions are welcome! Here's how:
 3. **Commit** changes: \`git commit -m 'Add awesome feature'\`
 4. **Push** to branch: \`git push origin feature/awesome-feature\`
 5. **Open** a Pull Request
-
-### Ideas for Contribution
-
-- [ ] Dark mode theme
-- [ ] Container stats (CPU, memory)
-- [ ] Docker Compose support
-- [ ] Image management
-- [ ] Container creation wizard
-- [ ] TLS certificate management
 
 ---
 

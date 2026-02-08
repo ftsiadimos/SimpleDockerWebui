@@ -5,6 +5,8 @@ from weakref import WeakKeyDictionary
 
 import docker
 import paramiko
+import json
+import threading
 from bs4 import BeautifulSoup
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_sock import Sock
@@ -478,6 +480,212 @@ def comma():
     except docker.errors.APIError as e:
         flash(f'Error accessing container: {e}', 'danger')
         return redirect(url_for('main.index'))
+
+
+@main_bp.route('/terminal', methods=['GET', 'POST'])
+def terminal():
+    """Open a terminal session to the Docker server via SSH."""
+    select_form = SelectServerForm()
+    servers = DockerServer.query.all()
+    active_server = DockerServer.get_active()
+
+    def get_server_label(s):
+        return s.display_name
+
+    select_form.server.choices = [(s.id, get_server_label(s)) for s in servers]
+
+    # Handle server selection similar to index
+    if request.method == 'POST' and 'server' in request.form:
+        server_id = None
+        if select_form.validate_on_submit():
+            server_id = select_form.server.data
+        else:
+            raw = request.form.get('server')
+            try:
+                server_id = int(raw) if raw is not None else None
+            except (TypeError, ValueError):
+                server_id = None
+            log.warning("Terminal select did not validate; fallback parsing server=%r -> %r", raw, server_id)
+
+        if server_id is None:
+            flash('Invalid server selection.', 'danger')
+            return redirect(url_for('main.terminal'))
+
+        server = DockerServer.query.get(server_id)
+        if server:
+            DockerServer.set_active(server_id)
+            _docker_client_cache.clear()
+            flash(f'Connected to "{server.display_name}".', 'success')
+        return redirect(url_for('main.terminal'))
+
+    # Determine server to connect to (query param overrides active)
+    server = None
+    r_server = request.args.get('server')
+    if r_server:
+        try:
+            server = DockerServer.query.get(int(r_server))
+        except Exception:
+            server = None
+    if not server:
+        server = active_server
+
+    if not server:
+        flash('No server configured.', 'warning')
+        return redirect(url_for('main.addcon'))
+
+    return render_template('terminal.html', server=server, select_form=select_form)
+
+
+@sock.route('/ssh')
+def ssh(sock):
+    """WebSocket handler to provide a full interactive PTY shell over SSH.
+
+    Implements a background reader thread to stream data from the SSH channel
+    to the WebSocket and accepts raw key data from the client. Clients may also
+    send a JSON message {type:'resize', cols: N, rows: M} to resize the remote
+    pty.
+    """
+    # Resolve server from query or active
+    server_id = request.args.get('server')
+    server = None
+    if server_id:
+        try:
+            server = DockerServer.query.get(int(server_id))
+        except Exception:
+            server = None
+    if not server:
+        server = DockerServer.get_active()
+
+    if not server:
+        sock.send('Error: No server configured')
+        return
+
+    # Establish SSH connection
+    try:
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        connect_kwargs = {'hostname': server.host, 'username': server.user, 'allow_agent': True, 'look_for_keys': True}
+        if server.password:
+            connect_kwargs['password'] = server.password
+        ssh_client.connect(**connect_kwargs, timeout=10)
+    except Exception as e:
+        sock.send(f'SSH connection error: {e}')
+        return
+
+    transport = ssh_client.get_transport()
+
+    # Default terminal size
+    cols = int(request.args.get('cols') or 80)
+    rows = int(request.args.get('rows') or 24)
+
+    try:
+        channel = transport.open_session()
+        channel.get_pty(term='xterm', width=cols, height=rows)
+        channel.invoke_shell()
+        channel.settimeout(0.0)
+    except Exception as e:
+        sock.send(f'Failed to open interactive shell: {e}')
+        try:
+            ssh_client.close()
+        except Exception:
+            pass
+        return
+
+    stop_event = threading.Event()
+
+    def _reader():
+        """Read from SSH channel and forward to WebSocket."""
+        try:
+            while not stop_event.is_set():
+                try:
+                    if channel.recv_ready():
+                        data = channel.recv(4096)
+                        if not data:
+                            break
+                        try:
+                            sock.send(data.decode('utf-8', errors='replace'))
+                        except Exception:
+                            break
+                    else:
+                        time.sleep(0.01)
+                except Exception:
+                    break
+        finally:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+    reader_thread = threading.Thread(target=_reader, daemon=True)
+    reader_thread.start()
+
+    try:
+        while True:
+            try:
+                data = sock.receive()
+            except Exception:
+                break
+
+            if data is None:
+                break
+
+            # Try to parse JSON control messages (e.g., resize)
+            parsed = None
+            try:
+                parsed = json.loads(data)
+            except Exception:
+                parsed = None
+
+            if isinstance(parsed, dict) and parsed.get('type') == 'resize':
+                try:
+                    c = int(parsed.get('cols', cols))
+                    r = int(parsed.get('rows', rows))
+                    channel.resize_pty(width=c, height=r)
+                except Exception as e:
+                    try:
+                        sock.send(f'Resize error: {e}')
+                    except Exception:
+                        pass
+                continue
+
+            # Local client-side commands
+            if data == 'clear':
+                try:
+                    sock.send('__CLEAR__')
+                except Exception:
+                    pass
+                continue
+
+            if data == 'exit':
+                try:
+                    sock.send('Session closed. Bye!')
+                except Exception:
+                    pass
+                break
+
+            # Raw input: send directly to SSH channel
+            try:
+                if isinstance(data, str):
+                    channel.send(data)
+                else:
+                    channel.send(str(data))
+            except Exception as e:
+                try:
+                    sock.send(f'Error sending to channel: {e}')
+                except Exception:
+                    pass
+                break
+
+    finally:
+        stop_event.set()
+        try:
+            channel.close()
+        except Exception:
+            pass
+        try:
+            ssh_client.close()
+        except Exception:
+            pass
 
 
 @main_bp.route("/stats", methods=["GET", "POST"])
