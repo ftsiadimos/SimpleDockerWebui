@@ -868,18 +868,62 @@ def container(sock):
         sock.send('Error: Failed to inspect container')
         return
 
-    # Try bash then fallback to sh
+    # Try a list of common shells (prefer bash, then sh/ash/dash/zsh).
+    # IMPORTANT: only set `exec_id` after exec_start succeeds to avoid a race
+    # where the client sends a resize for an exec instance that hasn't started yet.
     exec_id = None
     sock_obj = None
-    try:
+    shells = ['/bin/bash', '/usr/bin/bash', '/bin/sh', '/bin/ash', '/bin/dash', '/bin/zsh']
+    for shell in shells:
+        created = None
         try:
-            exec_id = client.api.exec_create(container.id, cmd=['/bin/bash'], tty=True, stdin=True)['Id']
-            sock_obj = client.api.exec_start(exec_id, tty=True, socket=True)
+            created = client.api.exec_create(container.id, cmd=[shell], tty=True, stdin=True)['Id']
+            sock_obj = client.api.exec_start(created, tty=True, socket=True)
+
+            # Poll exec_inspect briefly to ensure the exec process started and did
+            # not immediately fail (e.g., binary missing such as /bin/bash).
+            started = False
+            try:
+                for _ in range(8):  # poll ~400ms (8 * 50ms)
+                    ins = client.api.exec_inspect(created)
+                    # If 'Running' field exists and is True it's good
+                    if ins.get('Running'):
+                        started = True
+                        break
+                    # If ExitCode is present and non-zero, the exec failed to start
+                    if ins.get('ExitCode') is not None and ins.get('ExitCode') != 0:
+                        started = False
+                        break
+                    time.sleep(0.05)
+            except Exception:
+                # If inspect fails, fall back to assuming it failed to start
+                started = False
+
+            if not started:
+                # cleanup and try next shell
+                try:
+                    if hasattr(sock_obj, 'close'):
+                        sock_obj.close()
+                except Exception:
+                    pass
+                exec_id = None
+                sock_obj = None
+                continue
+
+            # success: assign exec_id only after the exec actually started
+            exec_id = created
+            try:
+                # Notify client which shell was chosen (optional, helpful for debugging)
+                sock.send(f'Connected to container shell: {shell}')
+            except Exception:
+                pass
+            break
         except Exception:
-            exec_id = client.api.exec_create(container.id, cmd=['/bin/sh'], tty=True, stdin=True)['Id']
-            sock_obj = client.api.exec_start(exec_id, tty=True, socket=True)
-    except Exception as e:
-        sock.send(f'Failed to start container shell: {e}')
+            exec_id = None
+            sock_obj = None
+            continue
+    if not sock_obj:
+        sock.send('Failed to start container shell: no suitable shell found')
         return
 
     # Access underlying raw socket if present
