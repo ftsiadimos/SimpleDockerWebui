@@ -1,15 +1,13 @@
 """Main routes and WebSocket handlers for LightDockerWebUI."""
 import os
 import subprocess
-from weakref import WeakKeyDictionary
 
 import docker
-import paramiko
+import paramiko # type: ignore
 import json
 import threading
-from bs4 import BeautifulSoup
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_sock import Sock
+from flask_sock import Sock # type: ignore
 import logging
 
 log = logging.getLogger(__name__)
@@ -26,11 +24,9 @@ def init_sock(app):
     """Initialize the WebSocket extension with the app."""
     sock.init_app(app)
 
-# ------------------------------------------------------------------
-# Per-socket working directory using WeakKeyDictionary for automatic
-# cleanup when socket connections are garbage collected.
-# ------------------------------------------------------------------
-session_workdir = WeakKeyDictionary()
+# Legacy per-command container terminal removed. Interactive PTY via
+# `/container` WebSocket provides full TTY shell; per-socket workdir no
+# longer required.
 
 # Cache for Docker client to avoid reconnecting on every request
 _docker_client_cache = {}
@@ -813,138 +809,25 @@ def inspect():
     except docker.errors.APIError as e:
         flash(f'Error inspecting container: {e}', 'danger')
         return redirect(url_for('main.index'))
-def _handle_builtin_command(sock, data):
-    """Handle built-in shell commands (cd, pwd, clear, ls, cat, echo, help, exit).
+# Removed legacy built-in command handler; interactive PTY provides
+# full shell functionality directly inside the container.
 
-    Returns:
-        True if command was handled, False otherwise.
+# Legacy echo-based container terminal removed. Use `/container` PTY
+# WebSocket handler (implemented earlier) which provides a true
+# interactive TTY shell and handles resizing, copy/paste, and raw I/O.
+
+@sock.route('/container')
+def container(sock):
+    """WebSocket PTY for container shells (interactive).
+
+    Establish a Docker exec with TTY and stream I/O between the exec socket and
+    the WebSocket. Supports JSON resize messages: {type:'resize', cols: N, rows: M}.
     """
-    # Help command
-    if data in ('help', '?'):
-        sock.send(
-            """
-Available commands:
-  clear         - Clear the terminal
-  pwd           - Print working directory
-  cd            - Change directory
-  ls            - List directory contents
-  cat           - Show file contents
-  echo          - Print text
-  exit          - Close terminal session
-  help, ?       - Show this help message
-All other commands are executed inside the container.
-            """
-        )
-        return True
-
-    # Exit command
-    if data == 'exit':
-        sock.send('Session closed. Bye!')
-        try:
-            sock.close()
-        except Exception:
-            pass
-        return True
-
-    # Clear command
-    if data == 'clear':
-        sock.send('__CLEAR__')
-        return True
-
-    # Print working directory
-    if data == 'pwd':
-        sock.send(session_workdir.get(sock, '/'))
-        return True
-
-    # Change directory
-    if data.startswith('cd '):
-        target = data[3:].strip()
-        current = session_workdir.get(sock, '/')
-        new_dir = os.path.normpath(os.path.join(current, target))
-        session_workdir[sock] = new_dir
-        sock.send(f'Changed directory to {new_dir}')
-        return True
-
-    # Echo command
-    if data.startswith('echo '):
-        sock.send(data[5:].strip())
-        return True
-
-    # ls command (list directory)
-    if data.startswith('ls'):
-        # Accept 'ls' or 'ls <dir>'
-        parts = data.split(maxsplit=1)
-        target_dir = parts[1].strip() if len(parts) > 1 else session_workdir.get(sock, '/')
-        # Use Docker exec to run ls
-        try:
-            client, _ = conf()
-            container_id = request.args.get("id")
-            container = client.containers.get(container_id)
-            container.reload()
-            result = container.exec_run(
-                f'ls -al {target_dir}',
-                workdir=session_workdir.get(sock, '/'),
-                stdout=True,
-                stderr=True,
-                demux=False
-            )
-            output = _decode_output(result.output)
-            sock.send(output if output else '(empty)')
-        except Exception as e:
-            sock.send(f'ls error: {e}')
-        return True
-
-    # cat command (show file contents)
-    if data.startswith('cat '):
-        file_path = data[4:].strip()
-        try:
-            client, _ = conf()
-            container_id = request.args.get("id")
-            container = client.containers.get(container_id)
-            container.reload()
-            result = container.exec_run(
-                f'cat {file_path}',
-                workdir=session_workdir.get(sock, '/'),
-                stdout=True,
-                stderr=True,
-                demux=False
-            )
-            output = _decode_output(result.output)
-            sock.send(output if output else '(empty)')
-        except Exception as e:
-            sock.send(f'cat error: {e}')
-        return True
-
-    return False
-
-
-def _decode_output(output):
-    """Safely decode container output to string."""
-    if isinstance(output, bytes):
-        try:
-            return output.decode('utf-8', errors='replace')
-        except Exception:
-            return BeautifulSoup(output, 'html.parser').get_text()
-    return str(output)
-
-
-@sock.route('/echo')
-def echo(sock):
-    """
-    WebSocket handler for container terminal sessions.
-
-    Supports built-in commands: cd, pwd, clear.
-    All other commands are executed inside the container.
-    """
-    container_id = request.args.get("id")
+    container_id = request.args.get('id')
     if not container_id:
         sock.send('Error: No container ID provided')
         return
 
-    # Initialize working directory for this socket
-    session_workdir[sock] = '/'
-
-    # Get client once for this session
     try:
         client, _ = conf()
         container = client.containers.get(container_id)
@@ -952,40 +835,151 @@ def echo(sock):
         sock.send(f'Error: {e}')
         return
 
-    while True:
+    # Container must be running
+    try:
+        container.reload()
+        state = container.attrs.get('State', {})
+        if not state.get('Running'):
+            sock.send('Error: Container is not running')
+            return
+    except Exception:
+        sock.send('Error: Failed to inspect container')
+        return
+
+    # Try bash then fallback to sh
+    exec_id = None
+    sock_obj = None
+    try:
         try:
-            data = sock.receive()
+            exec_id = client.api.exec_create(container.id, cmd=['/bin/bash'], tty=True, stdin=True)['Id']
+            sock_obj = client.api.exec_start(exec_id, tty=True, socket=True)
         except Exception:
-            break  # Connection closed or error
+            exec_id = client.api.exec_create(container.id, cmd=['/bin/sh'], tty=True, stdin=True)['Id']
+            sock_obj = client.api.exec_start(exec_id, tty=True, socket=True)
+    except Exception as e:
+        sock.send(f'Failed to start container shell: {e}')
+        return
 
-        if data is None:
-            break
+    # Access underlying raw socket if present
+    raw_sock = sock_obj._sock if hasattr(sock_obj, '_sock') else sock_obj
+    try:
+        raw_sock.setblocking(False)
+    except Exception:
+        pass
 
-        data = data.strip()
-        if not data:
-            continue
+    stop_event = threading.Event()
 
-        # Handle built-in commands
-        if _handle_builtin_command(sock, data):
-            continue
-
-        # Execute command in container
+    def _reader():
         try:
-            # Refresh container reference in case it was restarted
-            container.reload()
-            result = container.exec_run(
-                data,
-                workdir=session_workdir.get(sock, '/'),
-                stdout=True,
-                stderr=True,
-                demux=False
-            )
-            output = _decode_output(result.output)
-            sock.send(output if output else '(no output)')
-        except docker.errors.APIError as e:
-            sock.send(f'Docker API Error: {e}')
-        except Exception as e:
-            sock.send(f'Error: {e}')
+            while not stop_event.is_set():
+                try:
+                    data = None
+                    try:
+                        data = sock_obj.recv(4096)
+                    except Exception:
+                        try:
+                            data = raw_sock.recv(4096)
+                        except Exception:
+                            data = None
+                    if not data:
+                        time.sleep(0.01)
+                        continue
+                    try:
+                        sock.send(data.decode('utf-8', errors='replace'))
+                    except Exception:
+                        break
+                except Exception:
+                    break
+        finally:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+    reader_thread = threading.Thread(target=_reader, daemon=True)
+    reader_thread.start()
+
+    try:
+        while True:
+            try:
+                data = sock.receive()
+            except Exception:
+                break
+
+            if data is None:
+                break
+
+            parsed = None
+            try:
+                parsed = json.loads(data)
+            except Exception:
+                parsed = None
+
+            if isinstance(parsed, dict) and parsed.get('type') == 'resize':
+                try:
+                    c = int(parsed.get('cols', 80))
+                    r = int(parsed.get('rows', 24))
+                    try:
+                        client.api.exec_resize(exec_id, height=r, width=c)
+                    except Exception as e:
+                        try:
+                            sock.send(f'Resize error: {e}')
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                continue
+
+            if data == 'clear':
+                try:
+                    sock.send('__CLEAR__')
+                except Exception:
+                    pass
+                continue
+
+            if data == 'exit':
+                try:
+                    sock.send('Session closed. Bye!')
+                except Exception:
+                    pass
+                break
+
+            # Forward raw input to container socket
+            try:
+                if isinstance(data, str):
+                    to_send = data.encode('utf-8')
+                else:
+                    to_send = data
+                try:
+                    sock_obj.send(to_send)
+                except Exception:
+                    try:
+                        raw_sock.send(to_send)
+                    except Exception as e:
+                        try:
+                            sock.send(f'Error sending to container: {e}')
+                        except Exception:
+                            pass
+                        break
+            except Exception as e:
+                try:
+                    sock.send(f'Error: {e}')
+                except Exception:
+                    pass
+                break
+
+    finally:
+        stop_event.set()
+        try:
+            if hasattr(sock_obj, 'close'):
+                sock_obj.close()
+        except Exception:
+            pass
+        try:
+            # Best-effort: inspect to trigger cleanup / update state
+            client.api.exec_inspect(exec_id)
+        except Exception:
+            pass
 
 
 @main_bp.route("/submitadmin", methods=["POST"])

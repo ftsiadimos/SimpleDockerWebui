@@ -8,116 +8,74 @@
       <span class="terminal-dot red"></span>
       <span class="terminal-dot yellow"></span>
       <span class="terminal-dot green"></span>
-      <span class="text-light ms-2">Terminal</span>
+      <span class="text-light ms-2">Container Terminal</span>
     </div>
     <button type="button" class="btn btn-outline-light btn-sm" onclick="window.history.back();" title="Close terminal">
       <i class="fa fa-times" aria-hidden="true"></i> Close
     </button>
   </div>
   <div id="output" class="terminal-body">
-    <div id="log"></div>
-    <form id="terminalForm" class="terminal-input-line">
-      <span class="terminal-prompt">$</span>
-      <input type="text" 
-             id="terminalInput" 
-             class="terminal-input" 
-             autocomplete="off" 
-             autofocus
-             placeholder="Type a command...">
-    </form>
-    <div class="terminal-hint">
-      Built-in commands: <code>cd</code>, <code>pwd</code>, <code>clear</code>
-    </div>
+    <div id="terminal" style="height: 60vh; width: 100%;"></div>
   </div>
 </div>
 
+<!-- xterm.js and fit addon (CDN) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.js"></script>
+
 <script>
-  const log = document.getElementById('log');
   const output = document.getElementById('output');
-  const form = document.getElementById('terminalForm');
-  const input = document.getElementById('terminalInput');
+  const terminalContainer = document.getElementById('terminal');
 
-  // WebSocket connection
+  // WebSocket connection (container PTY)
   const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const socket = new WebSocket(`${wsProtocol}//${location.host}/echo?id={{ id }}`);
 
-  // Log message to terminal
-  function appendLog(text, className) {
-    const formatted = text.replace(/\n/g, '<br>');
-    const line = document.createElement('div');
-    line.className = className;
-    line.innerHTML = formatted;
-    log.appendChild(line);
-    output.scrollTop = output.scrollHeight;
-  }
+  // Create xterm
+  const term = new Terminal({cursorBlink: true, convertEol: true});
+  const fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  term.open(terminalContainer);
+  fitAddon.fit();
 
-  // Handle incoming messages
+  const socket = new WebSocket(`${wsProtocol}//${location.host}/container?id={{ id }}`);
+  socket.binaryType = 'arraybuffer';
+
+  socket.addEventListener('open', () => {
+    term.writeln('Connected to container terminal.');
+    fitAddon.fit();
+    socket.send(JSON.stringify({type: 'resize', cols: term.cols, rows: term.rows}));
+    term.focus();
+  });
+
   socket.addEventListener('message', (event) => {
     if (event.data === '__CLEAR__') {
-      log.innerHTML = '';
+      term.clear();
     } else {
-      appendLog(event.data, 'output-line');
+      term.write(event.data);
     }
   });
 
-  // Handle connection events
-  socket.addEventListener('open', () => {
-    appendLog('Connected to container terminal.', 'output-line');
+  socket.addEventListener('close', () => term.writeln('\r\nConnection closed.'));
+  socket.addEventListener('error', () => term.writeln('\r\nConnection error.'));
+
+  // Send data from terminal to server
+  term.onData((data) => {
+    try { socket.send(data); } catch (e) { /* ignore */ }
   });
 
-  socket.addEventListener('close', () => {
-    appendLog('Connection closed.', 'error-line');
+  // Resize handling
+  let resizeTimeout = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      fitAddon.fit();
+      try { socket.send(JSON.stringify({type: 'resize', cols: term.cols, rows: term.rows})); } catch (e) { }
+    }, 150);
   });
 
-  socket.addEventListener('error', () => {
-    appendLog('Connection error.', 'error-line');
-  });
-
-  // Built-in commands for autocompletion
-  const builtinCommands = [
-    'cd', 'pwd', 'clear', 'ls', 'cat', 'echo', 'help', '?', 'exit'
-  ];
-
-  // Handle form submission
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const command = input.value.trim();
-    if (command) {
-      appendLog(`$ ${command}`, 'input-line');
-      socket.send(command);
-      input.value = '';
-    }
-  });
-
-  // Tab autocompletion for commands
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Tab') {
-      event.preventDefault();
-      const val = input.value.trim();
-      if (!val) return;
-      // Only autocomplete first word (the command)
-      const parts = val.split(/\s+/);
-      if (parts.length === 1) {
-        const matches = builtinCommands.filter(cmd => cmd.startsWith(parts[0]));
-        if (matches.length === 1) {
-          input.value = matches[0] + ' ';
-        } else if (matches.length > 1) {
-          appendLog(matches.join('    '), 'terminal-hint');
-        }
-      }
-    }
-  });
-
-  // Keep input focused
-  output.addEventListener('click', () => {
-    input.focus();
-  });
-
-  // Scroll to bottom on load
-  window.addEventListener('load', () => {
-    output.scrollTop = output.scrollHeight;
-    input.focus();
-  });
+  // Paste handled by xterm
+  terminalContainer.addEventListener('click', () => term.focus());
 </script>
 
 {% endblock %}
