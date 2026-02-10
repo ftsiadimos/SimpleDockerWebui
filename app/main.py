@@ -6,6 +6,7 @@ import docker
 import paramiko # type: ignore
 import json
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_sock import Sock # type: ignore
 import logging
@@ -713,7 +714,7 @@ def stats():
         client, _ = conf()
         lines = []
         # Header similar to docker stats
-        header = "CONTAINER ID  NAME  CPU %   MEM USAGE / LIMIT   MEM %   NET I/O   BLOCK I/O   PIDS"
+        header = "CONTAINER ID  NAME                     CPU %  MEM USAGE  / LIMIT       MEM %  NET I/O           BLOCK I/O        PIDS"
         lines.append(header)
 
         def human_readable_bytes(n):
@@ -728,8 +729,10 @@ def stats():
                 n /= 1024.0
             return f"{n:.1f}PiB"
 
-        for cid in container_ids:
+        # Fetch stats in parallel to reduce latency when multiple containers are selected
+        def _fetch(cid):
             try:
+                t0 = time.time()
                 container = client.containers.get(cid)
                 stats = container.stats(stream=False)
 
@@ -768,11 +771,30 @@ def stats():
                 pids = stats.get('pids_stats', {}).get('current', '-')
 
                 line = f"{container.id[:12]:12}  {container.name[:20]:20}  {cpu_pct:6.1f}%   {human_readable_bytes(mem_used):10} / {human_readable_bytes(mem_limit):7}   {mem_pct:5.1f}%   {human_readable_bytes(net_rx)} / {human_readable_bytes(net_tx)}   {human_readable_bytes(blk_read)} / {human_readable_bytes(blk_write)}   {pids}"
-                lines.append(line)
+                log.debug("stats: container=%s fetch_time=%.3fs", cid[:12], time.time()-t0)
+                return cid, line
             except docker.errors.NotFound:
-                lines.append(f"{cid[:12]}  (not found)")
+                return cid, f"{cid[:12]}  (not found)"
             except Exception as e:
-                lines.append(f"{cid[:12]}  Error: {e}")
+                return cid, f"{cid[:12]}  Error: {e}"
+
+        max_workers = min(20, max(1, len(container_ids)))
+        results = {}
+        start_time = time.time()
+        with ThreadPoolExecutor(max_workers=max_workers) as exc:
+            futures = {exc.submit(_fetch, cid): cid for cid in container_ids}
+            for fut in as_completed(futures):
+                try:
+                    cid, line = fut.result()
+                    results[cid] = line
+                except Exception as e:
+                    cid = futures.get(fut, '(unknown)')
+                    results[cid] = f"{cid[:12]}  Error: {e}"
+        log.info("stats: fetched %d containers in %.3fs (workers=%d)", len(container_ids), time.time()-start_time, max_workers)
+
+        # Preserve original order
+        for cid in container_ids:
+            lines.append(results.get(cid, f"{cid[:12]}  Error: no result"))
 
         stats_text = '\n'.join(lines)
     except ValueError as e:

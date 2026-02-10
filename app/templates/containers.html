@@ -20,7 +20,6 @@
 <div class="card shadow-sm border-0">
   {% if containers %}
   <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
-    <span class="fw-semibold">{{ containers|length }} container{{ 's' if containers|length != 1 else '' }}</span>
     <div class="btn-group btn-group-sm" role="group">
       <button type="submit" name="submit_button" value="Start" class="btn btn-success" form="containerForm" data-bs-toggle="tooltip" title="Start selected containers">
         <i class="fa-solid fa-play me-1"></i>Start
@@ -38,6 +37,7 @@
         <i class="fa-solid fa-chart-bar me-1"></i>Stats
       </button>
     </div>
+    <span class="fw-semibold">{{ containers|length }} container{{ 's' if containers|length != 1 else '' }}</span>
   </div>
   {% endif %}
   <div class="card-body p-0">

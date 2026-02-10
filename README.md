@@ -69,7 +69,10 @@ LightDockerWebUI is a **clean, fast, and simple** web-based Docker management to
 <td width="50%">
 
 ### 💻 Web Terminal
-- Interactive shell access to remote servers via **SSH**
+- Interactive shell access:
+  - Full server SSH terminal (via **Terminal** under Configuration)
+  - Interactive container shell (full PTY via `xterm.js`) accessible from **Containers → Terminal**
+  - The previous limited, non-PTY container command interface has been removed
 
 </td>
 </tr>
@@ -201,6 +204,7 @@ LightDockerWebUI supports **multiple Docker servers**. Configure them through th
 ### Server Terminal (SSH)
 
 - A full interactive **server terminal** is available via the **Terminal** menu (under Configuration)
+- Container terminals are full PTY shells (using `xterm.js`) available from the **Containers** page; the legacy limited command terminal has been removed
 
 ### Environment Variables
 
