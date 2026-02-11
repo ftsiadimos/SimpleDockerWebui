@@ -214,6 +214,25 @@ def about():
     return render_template('about.html')
 
 
+@main_bp.route('/settings', methods=['GET','POST'])
+def settings():
+    """User settings: select UI theme."""
+    current = request.cookies.get('ldwui_theme', 'default')
+    themes = [('default','Default'), ('terminal-dark','Terminal Dark')]
+
+    if request.method == 'POST':
+        theme = request.form.get('theme', 'default')
+        if theme not in [t[0] for t in themes]:
+            theme = 'default'
+        resp = redirect(url_for('main.settings'))
+        # persist for 30 days
+        resp.set_cookie('ldwui_theme', theme, max_age=30*24*3600)
+        flash('Theme updated.', 'success')
+        return resp
+
+    return render_template('settings.html', current_theme=current, themes=themes)
+
+
 @main_bp.route('/compose', methods=['GET', 'POST'])
 def compose():
     """Manage Docker Compose projects."""

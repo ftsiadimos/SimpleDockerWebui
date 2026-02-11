@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Lightweight Docker container management web interface">
-    <meta name="theme-color" content="#212529">
+    <meta name="theme-color" content="{% if request.cookies.get('ldwui_theme') == 'terminal-dark' %}#000000{% else %}#212529{% endif %}">
 
     <title>{% if title %}{{ title }} - {% endif %}LightDockerWebUI</title>
 
@@ -29,7 +29,7 @@
     <script src="{{ url_for('static', filename='site.js') }}" defer></script>
   </head>
 
-  <body class="d-flex flex-column">
+  <body class="d-flex flex-column {% set _theme = request.cookies.get('ldwui_theme', 'default') %}{% if _theme != 'default' %}theme-{{ _theme }}{% endif %}">
     <div class="d-flex" id="app">
       <!-- Sidebar -->
       <nav id="sidebar" class="bg-dark text-white sidebar">
@@ -78,6 +78,11 @@
               <i class="fa fa-terminal me-2"></i> Terminal
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint == 'main.settings' %}active{% endif %}" href="{{ url_for('main.settings') }}">
+              <i class="fas fa-sliders-h me-2"></i> Settings
+            </a>
+          </li>
           
           <!-- Info Section -->
           <li class="nav-header text-white-50 px-3 py-2 mt-3 mb-1">
@@ -110,6 +115,11 @@
                   {% endfor %}
                 {% endif %}
               {% endwith %}
+
+              <!-- Quick theme toggle -->
+              <button id="themeToggle" class="btn btn-outline-secondary btn-sm me-2" title="Toggle terminal theme">
+                <i class="fas fa-adjust"></i>
+              </button>
             </div>
           </div>
         </nav>
@@ -122,6 +132,26 @@
 
     <!-- Toast container for flash messages -->
     <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+
+    <script>
+      // Theme toggle button: toggle between default and terminal-dark (persists cookie site-wide)
+      document.addEventListener('DOMContentLoaded', function(){
+        var btn = document.getElementById('themeToggle');
+        if (!btn) return;
+        btn.addEventListener('click', function(){
+          var m = document.cookie.match('(^|;)\\s*ldwui_theme\\s*=\\s*([^;]+)');
+          var cur = m ? decodeURIComponent(m.pop()) : 'default';
+          var next = (cur === 'terminal-dark') ? 'default' : 'terminal-dark';
+          var expires = new Date(); expires.setDate(expires.getDate()+30);
+          document.cookie = 'ldwui_theme=' + encodeURIComponent(next) + '; path=/; expires=' + expires.toUTCString();
+          // apply immediately
+          document.body.classList.remove('theme-default','theme-terminal-dark');
+          if (next !== 'default') document.body.classList.add('theme-' + next);
+          // reload to ensure server-side pieces update
+          location.reload();
+        });
+      });
+    </script>
   </body>
 </html>
 

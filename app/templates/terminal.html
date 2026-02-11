@@ -38,6 +38,7 @@
   term.open(terminalContainer);
   fitAddon.fit();
 
+
   const socket = new WebSocket(`${wsProtocol}//${location.host}/ssh?server={{ server.id }}`);
   socket.binaryType = 'arraybuffer';
 

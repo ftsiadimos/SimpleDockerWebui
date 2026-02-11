@@ -178,6 +178,16 @@ body { min-height: 100vh; background-color: #f4f6f9; }
 /* Visual polish: darker sidebar, subtle card accents */
 .nav-link { color: rgba(255,255,255,0.92); }
 .navbar.bg-light { background: #f4f6f9 !important; border-bottom: 1px solid rgba(0,0,0,0.04); }
+
+/* Theme-specific navbar overrides */
+.theme-terminal-dark .navbar.bg-light { background: #020202 !important; border-bottom: 1px solid rgba(255,255,255,0.03) !important; color: #bfffbf !important; }
+.theme-terminal-dark .navbar.bg-light .navbar-page-title, .theme-terminal-dark .navbar.bg-light .navbar-brand, .theme-terminal-dark .navbar.bg-light .nav-link, .theme-terminal-dark .navbar.bg-light .btn, .theme-terminal-dark .navbar.bg-light .input-group-text { color: #bfffbf !important; }
+.theme-terminal-dark .navbar.bg-light .form-select, .theme-terminal-dark .navbar.bg-light .form-control { background:#040404 !important; color:#dfffd8 !important; border: 1px solid #333 !important; }
+.theme-terminal-dark .navbar.bg-light .alert { background: transparent !important; border: 1px solid rgba(255,255,255,0.03) !important; color: #dfffd8 !important; }
+.theme-terminal-dark .navbar.bg-light .btn-outline-secondary { color: #cfcfcf !important; border-color: rgba(255,255,255,0.03) !important; }
+.theme-terminal-dark .btn-close { filter: invert(1) grayscale(1) contrast(2) !important; }
+.theme-terminal-dark .toast, .theme-terminal-dark .alert { color: #dfffd8 !important; }
+
 .card.shadow-sm { transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .card.shadow-sm:hover { box-shadow: 0 8px 20px rgba(2,6,23,0.08); }
 .card-header { font-weight: 700; }
@@ -188,4 +198,113 @@ body { min-height: 100vh; background-color: #f4f6f9; }
 /* Form validation helpers */
 .is-invalid { border-color: #dc3545 !important; box-shadow: 0 0 0 0.075rem rgba(220,53,69,0.25); }
 .invalid-feedback { display: block; }
+
+/* Theme: terminal-dark overrides */
+.theme-terminal-dark { background: #000 !important; color: #cfcfcf !important; }
+.theme-terminal-dark body, .theme-terminal-dark html { background: #000 !important; color: #cfcfcf !important; }
+.theme-terminal-dark .container-fluid, .theme-terminal-dark main { background: transparent !important; color: #cfcfcf !important; }
+
+/* Cards */
+.theme-terminal-dark .card, .theme-terminal-dark .card-body { background: #070707 !important; color: #dfffd8 !important; border-color: #111 !important; }
+.theme-terminal-dark .card-header { background: transparent !important; color: #bfffbf !important; border-bottom: 1px solid #111 !important; }
+
+/* Tables */
+.theme-terminal-dark table, .theme-terminal-dark .table { background: transparent !important; color: #bfffbf !important; border-collapse: collapse; }
+.theme-terminal-dark .table thead th, .theme-terminal-dark thead.table-light th { background: #020202 !important; color: #9efd9e !important; border-bottom: 1px solid #222 !important; }
+.theme-terminal-dark .table thead.table-light { background: #020202 !important; }
+.theme-terminal-dark .table tbody td { background: transparent !important; color: #dfffd8 !important; border-top: 1px solid rgba(255,255,255,0.02) !important; }
+.theme-terminal-dark .table-striped tbody tr:nth-of-type(odd) { background: rgba(0,255,0,0.02) !important; }
+.theme-terminal-dark .table-hover tbody tr:hover { background: rgba(0,255,0,0.04) !important; }
+
+/* DataTables controls */
+.theme-terminal-dark .dataTables_wrapper { color: #dfffd8 !important; }
+.theme-terminal-dark .dataTables_wrapper .dataTables_filter, .theme-terminal-dark .dataTables_wrapper .dataTables_length { background: transparent !important; }
+.theme-terminal-dark .dataTables_wrapper .dataTables_filter input, .theme-terminal-dark .dataTables_wrapper .dataTables_length select, .theme-terminal-dark #tableSearch { background:#020202; color:#bfffbf; border:1px solid #333; }
+.theme-terminal-dark .dt-search-wrapper .input-group-text { background: transparent !important; color: #bfffbf !important; border: 1px solid #333 !important; }
+.theme-terminal-dark .dt-length-inline .form-select { background:#020202; color:#bfffbf; border:1px solid #333; }
+.theme-terminal-dark .dt-length-inline .small { color: rgba(180,255,180,0.75) !important; }
+.theme-terminal-dark .dataTables_wrapper .dataTables_paginate .paginate_button { background: transparent; color: #bfffbf; border: 1px solid transparent; }
+.theme-terminal-dark .dataTables_wrapper .dataTables_paginate .paginate_button.current { background:#033003; border-color:#066006; color:#001900; box-shadow:0 0 8px rgba(0,255,0,0.08); }
+
+/* Bootstrap pagination (ensure page links are dark and match theme) */
+.theme-terminal-dark .pagination .page-link { background: transparent !important; color: #bfffbf !important; border: 1px solid rgba(255,255,255,0.03) !important; }
+.theme-terminal-dark .pagination .page-link:hover { background: rgba(0,255,0,0.02) !important; }
+.theme-terminal-dark .pagination .page-item.active .page-link { background: #033003 !important; border-color:#066006 !important; color: #001900 !important; box-shadow:0 0 8px rgba(0,255,0,0.08) !important; }
+/* DataTables uses both classes; cover both */
+.theme-terminal-dark .dataTables_wrapper .paginate_button, .theme-terminal-dark .paginate_button { background: transparent !important; color: #bfffbf !important; border: 1px solid transparent !important; }
+.theme-terminal-dark .dataTables_wrapper .paginate_button.current, .theme-terminal-dark .paginate_button.current { background:#033003 !important; border-color:#066006 !important; color:#001900 !important; box-shadow:0 0 8px rgba(0,255,0,0.08) !important; }
+.theme-terminal-dark .dataTables_wrapper .dataTables_info { color: #bfffbf !important; }
+
+/* Ensure dropdown label/container hidden original label matches theme */
+.theme-terminal-dark .dataTables_length { color: #bfffbf !important; }
+
+/* Buttons and controls */
+.theme-terminal-dark .btn { border-color: #133; color: #bfffbf; }
+.theme-terminal-dark .btn-primary { background: linear-gradient(180deg,#0a8f0a 0%, #067006 100%) !important; border-color:#066006 !important; color: #001900 !important; }
+.theme-terminal-dark .btn-primary:hover { background: linear-gradient(180deg,#0c9f0c 0%, #078007 100%) !important; }
+.theme-terminal-dark .btn-outline-secondary { color: #bfffbf !important; border-color: #333 !important; background: transparent !important; }
+
+/* Checkbox accent color */
+.theme-terminal-dark input[type="checkbox"] { accent-color: #00ff00 !important; }
+
+
+/* Navigation */
+.theme-terminal-dark .sidebar { background: linear-gradient(180deg, #02040a 0%, #031018 100%); }
+.theme-terminal-dark .sidebar .nav-link { color: rgba(180,255,180,0.95) !important; }
+.theme-terminal-dark .nav-header, .theme-terminal-dark .sidebar .nav-header { color: rgba(140,255,140,0.75) !important; }
+.theme-terminal-dark .nav-link.active { background: rgba(0,255,0,0.06) !important; color: #fff !important; }
+
+.theme-terminal-dark a { color: #9efd9e !important; }
+.theme-terminal-dark .badge { background: rgba(0,255,0,0.08) !important; color: #bfffbf !important; }
+
+/* Terminal/log area */
+.theme-terminal-dark .terminal-body, .theme-terminal-dark .log-content, .theme-terminal-dark .json-item, .theme-terminal-dark .inspect-content {
+  background: #000000 !important;
+  color: #00ff00 !important;
+}
+.theme-terminal-dark .terminal-prompt { color: #00ff00 !important; font-weight: 700; }
+.theme-terminal-dark .terminal-input { color: #00ff00 !important; caret-color: #00ff00 !important; }
+.theme-terminal-dark .terminal-header, .theme-terminal-dark .log-header { background: #020202 !important; border-bottom: 1px solid #111 !important; }
+
+/* Dashboard & Cards: ensure no white panels and readable text */
+.theme-terminal-dark .card.shadow-sm, .theme-terminal-dark .card { background: #070707 !important; border: 1px solid #111 !important; color: #dfffd8 !important; }
+.theme-terminal-dark .content-cards .card-body { padding: 1.25rem !important; }
+.theme-terminal-dark .content-cards .h2 { color: #9efd9e !important; }
+.theme-terminal-dark .text-muted { color: rgba(180,255,180,0.55) !important; }
+
+/* Quick actions buttons */
+.theme-terminal-dark .btn-outline-primary { color: #9efd9e !important; border-color: rgba(160,255,160,0.08) !important; background: rgba(0,0,0,0.0) !important; }
+.theme-terminal-dark .btn-outline-secondary { color: #cfcfcf !important; border-color: rgba(255,255,255,0.03) !important; }
+
+/* List groups */
+.theme-terminal-dark .list-group { background: transparent !important; }
+.theme-terminal-dark .list-group-item { background: transparent !important; color: #dfffd8 !important; border: 0; padding: 0.5rem 0; }
+.theme-terminal-dark .list-group-item .small { color: rgba(160,255,160,0.6) !important; }
+
+/* Make sure badges with light/yellow backgrounds also look good */
+.theme-terminal-dark .badge.bg-warning { background-color: rgba(255,200,0,0.06) !important; color: #ffd56b !important; }
+.theme-terminal-dark .badge.bg-light { background-color: rgba(255,255,255,0.02) !important; color: #cfcfcf !important; }
+
+/* Improve table contrast */
+.theme-terminal-dark .table { color: #dfffd8 !important; }
+.theme-terminal-dark .table thead th { background: #020202 !important; color: #9efd9e !important; }
+.theme-terminal-dark .table tbody td { background: transparent !important; color: #dfffd8 !important; }
+
+/* xterm.js overrides for better contrast */
+.theme-terminal-dark .xterm, .theme-terminal-dark .xterm-viewport { background: #000 !important; color: #00ff00 !important; }
+.theme-terminal-dark .xterm .xterm-viewport { background: #000 !important; }
+
+/* About page specific adjustments */
+.theme-terminal-dark .p-3.bg-light { background: #0b0b0b !important; color: #dfffd8 !important; border: 1px solid #111 !important; }
+.theme-terminal-dark .p-3.bg-light h6, .theme-terminal-dark .p-3.bg-light .fw-semibold { color: #bfffbf !important; }
+.theme-terminal-dark .lead.text-muted { color: rgba(180,255,180,0.85) !important; }
+.theme-terminal-dark .card-footer.bg-light { background: #020202 !important; border-top: 1px solid #111 !important; color: #dfffd8 !important; }
+.theme-terminal-dark .btn-dark { background: linear-gradient(180deg,#0a8f0a 0%, #067006 100%) !important; color: #001900 !important; border-color:#066006 !important; }
+.theme-terminal-dark .p-3.bg-light .fa-solid { color: #9efd9e !important; }
+
+/* Generic override to ensure any .bg-light in theme becomes dark */
+.theme-terminal-dark .bg-light { background: #020202 !important; color: #dfffd8 !important; border-color: #111 !important; }
+
+
+
 

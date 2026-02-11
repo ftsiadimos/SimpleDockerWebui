@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header">
+    <h3 class="mb-0">Settings</h3>
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <div class="mb-3">
+        <label for="themeSelect" class="form-label">Theme</label>
+        <select id="themeSelect" name="theme" class="form-select">
+          {% for key, label in themes %}
+            <option value="{{ key }}" {% if current_theme==key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <button class="btn btn-primary" type="submit">Save</button>
+        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </div>
+    </form>
+    <p class="text-muted small mt-2">The theme will be saved to a cookie for this browser for 30 days.</p>
+  </div>
+</div>
+
+<script>
+  // Live preview selection (does not persist until Save)
+  document.addEventListener('DOMContentLoaded', function(){
+    var s = document.getElementById('themeSelect');
+    if (!s) return;
+    s.addEventListener('change', function(){
+      document.body.classList.remove('theme-default', 'theme-terminal-dark');
+      if (s.value && s.value !== 'default') document.body.classList.add('theme-' + s.value);
+    });
+
+    // On submit, set cookie client-side so the theme applies immediately and reliably
+    var form = s.closest('form');
+    if (form) {
+      form.addEventListener('submit', function(){
+        var val = s.value || 'default';
+        var expires = new Date();
+        expires.setDate(expires.getDate() + 30);
+        // path=/ ensures cookie is available site-wide
+        document.cookie = 'ldwui_theme=' + encodeURIComponent(val) + '; path=/; expires=' + expires.toUTCString();
+        // ensure body class is set immediately
+        document.body.classList.remove('theme-default', 'theme-terminal-dark');
+        if (val !== 'default') document.body.classList.add('theme-' + val);
+      });
+    }
+  });
+</script>
+
+{% endblock %}

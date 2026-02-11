@@ -1,6 +1,16 @@
 document.addEventListener('DOMContentLoaded', function(){
   var sidebar = document.getElementById('sidebar');
 
+  // Apply theme from cookie (server also sets cookie when saving settings)
+  function getCookie(name) {
+    var v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? v.pop() : '';
+  }
+  var theme = getCookie('ldwui_theme') || 'default';
+  if (theme && theme !== 'default') {
+    document.body.classList.add('theme-' + theme);
+  }
+
   // Initialize Bootstrap tooltips (for elements with title)
   try {
     var titleEls = [].slice.call(document.querySelectorAll('[title]'));
