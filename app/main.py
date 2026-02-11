@@ -347,20 +347,33 @@ def addcon():
     # Handle form submissions
     if request.method == 'POST':
         # Add new server
-        if 'submit' in request.form and add_form.validate():
-            new_server = DockerServer(
-                display_name=add_form.display_name.data,
-                host=add_form.host.data or None,
-                port=add_form.port.data or None,
-                user=add_form.user.data or None,
-                password=add_form.password.data or None,
-                is_active=len(servers) == 0  # First server is active by default
-            )
-            db.session.add(new_server)
-            db.session.commit()
-            _docker_client_cache.clear()
-            flash(f'Server "{new_server.display_name}" added successfully.', 'success')
-            return redirect(url_for('main.addcon'))
+        if 'submit' in request.form:
+            if add_form.validate():
+                new_server = DockerServer(
+                    display_name=add_form.display_name.data,
+                    host=add_form.host.data or None,
+                    port=add_form.port.data or None,
+                    user=add_form.user.data or None,
+                    password=add_form.password.data or None,
+                    is_active=len(servers) == 0  # First server is active by default
+                )
+                db.session.add(new_server)
+                db.session.commit()
+                _docker_client_cache.clear()
+                flash(f'Server "{new_server.display_name}" added successfully.', 'success')
+                return redirect(url_for('main.addcon'))
+            else:
+                # Provide explicit feedback for validation failures (eg. CSRF/session issues)
+                log.warning("AddCon: form validation failed: %s", add_form.errors)
+                for field, errs in add_form.errors.items():
+                    for err in errs:
+                        # Use field label if possible for friendlier messages
+                        try:
+                            label = getattr(add_form, field).label.text
+                        except Exception:
+                            label = field
+                        flash(f"{label}: {err}", 'danger')
+                return redirect(url_for('main.addcon'))
         
         # Select active server
         if 'submit_select' in request.form:
