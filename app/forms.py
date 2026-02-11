@@ -1,6 +1,6 @@
 """Form definitions for LightDockerWebUI."""
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, SelectField
+from wtforms import StringField, SubmitField, SelectField, PasswordField
 from wtforms.validators import Optional, Length, Regexp, DataRequired
 
 
@@ -37,15 +37,15 @@ class AddServerForm(FlaskForm):
             Optional(),
             Length(max=100, message='User must be less than 100 characters')
         ],
-        render_kw={'placeholder': 'root or your-username'}
+        render_kw={'placeholder': 'root or your-username', 'autocomplete': 'username'}
     )
-    password = StringField(
+    password = PasswordField(
         'SSH Password',
         validators=[
             Optional(),
             Length(max=255, message='Password must be less than 255 characters')
         ],
-        render_kw={'placeholder': 'SSH password (optional if using keys)', 'type': 'password'}
+        render_kw={'placeholder': 'SSH password (optional if using keys)', 'autocomplete': 'current-password'}
     )
     submit = SubmitField('Add Server')
 
