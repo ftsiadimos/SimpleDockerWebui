@@ -22,16 +22,7 @@
 
 LightDockerWebUI is a **clean, fast, and simple** web-based Docker management tool designed for home servers, development environments, and small deployments. No complex setup — just run and manage your containers from any browser.
 
-### Why LightDockerWebUI?
 
-| Feature | LightDockerWebUI | Portainer | Yacht |
-|---------|------------------|-----------|-------|
-| **Size** | ~50MB | ~300MB | ~150MB |
-| **Memory** | ~30MB | ~100MB+ | ~80MB |
-| **Setup** | 1 command | Multi-step | Multi-step |
-| **Focus** | Simplicity | Enterprise | Moderate |
-
----
 
 ## ✨ Features
 
@@ -72,7 +63,7 @@ LightDockerWebUI is a **clean, fast, and simple** web-based Docker management to
 - Interactive shell access:
   - Full server SSH terminal (via **Terminal** under Configuration)
   - Interactive container shell (full PTY via `xterm.js`) accessible from **Containers → Terminal**
-  - The previous limited, non-PTY container command interface has been removed
+
 
 </td>
 </tr>
