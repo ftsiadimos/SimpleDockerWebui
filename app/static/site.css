@@ -33,6 +33,14 @@ body { min-height: 100vh; background-color: #f4f6f9; }
 
 /* Small helpers */
 
+/* small metadata font for dashboard stats */
+.meta-size {
+  font-size: 0.875rem; /* slightly smaller than .small */
+  color: #8998a5;
+  font-weight: 600;
+}
+.theme-terminal-dark .meta-size { color: rgba(180,255,180,0.6) !important; }
+
 /* Compose table */
 #compose-table { background-color: #f4f6f9; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.06); }
 #compose-table thead th { background-color: #f8f9fa !important; color: #343a40 !important; border: none; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
