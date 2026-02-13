@@ -15,7 +15,7 @@
   </form>
 </div>
 
-<div class="row content-cards g-4 mb-5">
+<div class="row content-cards g-4 mb-4">
   <div class="col-6 col-md-3">
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body d-flex align-items-center p-4">
@@ -29,6 +29,7 @@
       </div>
     </div>
   </div>
+
   <div class="col-6 col-md-3">
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body d-flex align-items-center p-4">
@@ -42,6 +43,7 @@
       </div>
     </div>
   </div>
+
   <div class="col-6 col-md-3">
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body d-flex align-items-center p-4">
@@ -55,15 +57,74 @@
       </div>
     </div>
   </div>
+
   <div class="col-6 col-md-3">
     <div class="card shadow-sm border-0 h-100">
       <div class="card-body d-flex align-items-center p-4">
         <div class="flex-grow-1">
           <div class="d-flex align-items-center mb-2">
             <i class="fa-solid fa-box text-warning me-2 fs-4"></i>
-            <span class="text-muted small fw-bold text-uppercase">Images</span>
+            <span class="text-muted small fw-bold text-uppercase">Images (used)</span>
           </div>
           <div class="h2 mb-0 text-warning">{{ images_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row content-cards g-4 mb-5 justify-content-center">
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-images text-secondary me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Total Images</span>
+          </div>
+          <div class="h2 mb-0 text-secondary">{{ total_images }} images · {{ total_images_size_gb }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-network-wired text-success me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Networks</span>
+          </div>
+          <div class="h2 mb-0 text-success">{{ networks_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-database text-danger me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Volumes</span>
+          </div>
+          <div class="h2 mb-0 text-danger">{{ volumes_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body d-flex align-items-center p-4">
+        <div class="flex-grow-1">
+          <div class="d-flex align-items-center mb-2">
+            <i class="fa-solid fa-layer-group text-info me-2 fs-4"></i>
+            <span class="text-muted small fw-bold text-uppercase">Compose Stacks</span>
+          </div>
+          <div class="h2 mb-0 text-info">{{ compose_stacks_count }}</div>
         </div>
       </div>
     </div>

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block page_title %}Volumes{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body text-center p-4">
+        <div class="d-flex align-items-center justify-content-center mb-3">
+          <i class="fa-solid fa-database text-danger fs-1 me-3"></i>
+          <div class="text-start">
+            <div class="h1 mb-0 text-danger">{{ volumes_count }}</div>
+            <div class="text-muted fw-semibold">Total volumes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body text-center p-4">
+        <div class="d-flex align-items-center justify-content-center mb-3">
+          <i class="fa-solid fa-ban text-warning fs-1 me-3"></i>
+          <div class="text-start">
+            <div class="h1 mb-0 text-warning">{{ dangling_count }}</div>
+            <div class="text-muted fw-semibold">Unused / prunable</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
+    <h5 class="mb-0"><i class="fa-solid fa-database text-muted me-2"></i>Volumes</h5>
+    <form method="post">
+      <input type="hidden" name="action" value="prune">
+      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Prune unused volumes? This will remove volumes not referenced by any container.')">
+        <i class="fa-solid fa-broom me-1"></i>Clean unused volumes
+      </button>
+    </form>
+  </div>
+  <div class="card-body p-0">
+    <div class="p-3">
+      <h6 class="small text-muted mb-2">Volumes on this server</h6>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light small">
+            <tr>
+              <th>NAME</th>
+              <th>DRIVER</th>
+              <th>MOUNTPOINT</th>
+              <th>PRUNABLE</th>
+            </tr>
+          </thead>
+          <tbody class="small">
+            {% for v in volumes_list %}
+            <tr>
+              <td>{{ v.name }}</td>
+              <td>{{ v.driver }}</td>
+              <td class="text-truncate" style="max-width:240px">{{ v.mountpoint }}</td>
+              <td>{% if v.prunable %}<span class="badge bg-warning text-dark">yes</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

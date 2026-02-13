@@ -25,6 +25,22 @@ def init_sock(app):
     """Initialize the WebSocket extension with the app."""
     sock.init_app(app)
 
+
+def _human_size(bytes_num: int) -> str:
+    """Return human-readable size string from bytes (KB/MB/GB).
+
+    Keep output short (e.g. "12.3 MB", "1.23 GB") used for image sizes.
+    """
+    try:
+        b = float(bytes_num)
+    except Exception:
+        return "0 B"
+    units = [(1024**3, 'GB'), (1024**2, 'MB'), (1024, 'KB')]
+    for thresh, unit in units:
+        if b >= thresh:
+            return f"{b / thresh:.2f} {unit}"
+    return f"{b:.0f} B"
+
 # Legacy per-command container terminal removed. Interactive PTY via
 # `/container` WebSocket provides full TTY shell; per-socket workdir no
 # longer required.
@@ -69,7 +85,7 @@ def conf(use_cache=True):
             _docker_client_cache.pop(base_url, None)
 
     try:
-        client = docker.DockerClient(base_url=base_url, timeout=10)
+        client = docker.DockerClient(base_url=base_url, timeout=60)
         client.ping()
         if use_cache:
             _docker_client_cache[base_url] = client
@@ -110,7 +126,7 @@ def index():
         if server:
             base_url = f"tcp://{server.host}:{server.port}" if server.is_configured else 'unix://var/run/docker.sock'
             try:
-                client = docker.DockerClient(base_url=base_url, timeout=10)
+                client = docker.DockerClient(base_url=base_url, timeout=60)
                 client.ping()
                 DockerServer.set_active(server_id)
                 _docker_client_cache.clear()
@@ -131,6 +147,11 @@ def index():
     containers_count = 0
     running_count = 0
     images_count = 0
+    total_images = 0
+    total_images_size_gb = "0.00 GB"
+    networks_count = 0
+    volumes_count = 0
+    compose_stacks_count = 0
 
     try:
         client, serverurl = conf()
@@ -138,6 +159,44 @@ def index():
         containers_count = len(raw_containers)
         running_count = sum(1 for c in raw_containers if getattr(c, 'status', '') == 'running')
         images_count = len({ (c.attrs.get('Config', {}).get('Image', '') if getattr(c, 'attrs', None) else '') for c in raw_containers })
+
+        # new totals: actual images on the daemon, networks and volumes
+        try:
+            images = client.images.list()
+            total_images = len(images)
+
+            # sum image sizes (use attrs['Size'] when available) and format as GB
+            total_images_size_bytes = 0
+            for img in images:
+                try:
+                    total_images_size_bytes += img.attrs.get('Size', 0) if getattr(img, 'attrs', None) else 0
+                except Exception:
+                    # ignore individual image read errors
+                    continue
+            total_images_size_gb = f"{(total_images_size_bytes / (1024 ** 3)):.2f} GB"
+        except Exception:
+            total_images = 0
+            total_images_size_gb = "0.00 GB"
+        try:
+            networks_count = len(client.networks.list())
+        except Exception:
+            networks_count = 0
+        try:
+            volumes_count = len(client.volumes.list())
+        except Exception:
+            volumes_count = 0
+
+        # compose stacks: find unique compose project names from container labels
+        try:
+            compose_projects = set()
+            for c in raw_containers:
+                labels = getattr(c, 'labels', {}) or {}
+                proj = labels.get('com.docker.compose.project')
+                if proj:
+                    compose_projects.add(proj)
+            compose_stacks_count = len(compose_projects)
+        except Exception:
+            compose_stacks_count = 0
 
         recent_activity = []
         for c in raw_containers[-8:]:
@@ -156,6 +215,11 @@ def index():
                                containers_count=containers_count,
                                running_count=running_count,
                                images_count=images_count,
+                               total_images=total_images,
+                               total_images_size_gb=total_images_size_gb,
+                               networks_count=networks_count,
+                               volumes_count=volumes_count,
+                               compose_stacks_count=compose_stacks_count,
                                recent_activity=recent_activity,
                                select_form=select_form)
     except ValueError as err:
@@ -165,6 +229,11 @@ def index():
                                containers_count=containers_count,
                                running_count=running_count,
                                images_count=images_count,
+                               total_images=0,
+                               total_images_size_gb="0.00 GB",
+                               networks_count=0,
+                               volumes_count=0,
+                               compose_stacks_count=0,
                                recent_activity=[],
                                select_form=select_form)
 
@@ -345,6 +414,175 @@ def compose():
     stopped_count = len(compose_projects) - running_count
     
     return render_template('compose.html', compose_projects=compose_projects, running_count=running_count, stopped_count=stopped_count)
+
+
+@main_bp.route('/images', methods=['GET','POST'])
+def images():
+    """Images management and pruning."""
+    select_form = SelectServerForm()
+    servers = DockerServer.query.all()
+    active_server = DockerServer.get_active()
+    select_form.server.choices = [(s.id, s.display_name) for s in servers]
+    if active_server:
+        select_form.server.data = active_server.id
+
+    images_count = 0
+    dangling_count = 0
+    try:
+        client, serverurl = conf()
+        images = client.images.list()
+        images_count = len(images)
+        try:
+            prunable_images_raw = client.images.list(filters={'dangling': True})
+            dangling_count = len(prunable_images_raw)
+        except Exception:
+            # fallback: count images with no repo tags
+            prunable_images_raw = [i for i in images if not getattr(i, 'tags', None)]
+            dangling_count = len(prunable_images_raw)
+
+        # build image list for display (short id, tags, size, prunable)
+        images_list = []
+        prunable_ids = {getattr(i, 'id', '') for i in prunable_images_raw}
+        for i in images:
+            iid = (getattr(i, 'id', '') or '')[:12]
+            tags = ', '.join(getattr(i, 'tags', []) or ['<none>:<none>'])
+            size_bytes = 0
+            try:
+                size_bytes = int(i.attrs.get('Size', 0)) if getattr(i, 'attrs', None) else 0
+            except Exception:
+                size_bytes = 0
+            images_list.append({
+                'id': iid,
+                'tags': tags,
+                'size': _human_size(size_bytes),
+                'prunable': (getattr(i, 'id', '') in prunable_ids)
+            })
+
+        # prepare short list of prunable images for preview
+        prunable_preview = []
+        for i in prunable_images_raw[:5]:
+            prunable_preview.append({
+                'id': (getattr(i, 'id', '') or '')[:12],
+                'tags': ', '.join(getattr(i, 'tags', []) or ['<none>:<none>'])
+            })
+
+        if request.method == 'POST' and request.form.get('action') == 'prune':
+            try:
+                result = client.images.prune()
+                reclaimed = result.get('SpaceReclaimed', 0)
+                deleted = result.get('ImagesDeleted') or []
+                num_deleted = len(deleted) if isinstance(deleted, list) else 1
+                flash(f'Pruned {num_deleted} images — reclaimed {reclaimed // (1024**2)} MB', 'success')
+            except Exception as exc:
+                flash(f'Error pruning images: {exc}', 'danger')
+            return redirect(url_for('main.images'))
+
+        return render_template('images.html', images_count=images_count, dangling_count=dangling_count, images_list=images_list, prunable_preview=prunable_preview, select_form=select_form)
+    except ValueError as err:
+        flash(str(err), 'warning')
+        return render_template('images.html', images_count=0, dangling_count=0, select_form=select_form)
+
+
+@main_bp.route('/volumes', methods=['GET','POST'])
+def volumes():
+    """Volumes management and pruning."""
+    select_form = SelectServerForm()
+    servers = DockerServer.query.all()
+    active_server = DockerServer.get_active()
+    select_form.server.choices = [(s.id, s.display_name) for s in servers]
+    if active_server:
+        select_form.server.data = active_server.id
+
+    volumes_count = 0
+    dangling_count = 0
+    try:
+        client, serverurl = conf()
+        volumes = client.volumes.list() or []
+        volumes_count = len(volumes)
+        try:
+            prunable = client.volumes.list(filters={'dangling': True})
+            dangling_count = len(prunable)
+        except Exception:
+            prunable = []
+            dangling_count = 0
+
+        # build volumes list for display and a preview of prunable volumes
+        volumes_list = []
+        prunable_names = {v.name for v in prunable}
+        for v in volumes:
+            name = getattr(v, 'name', '')
+            mountpoint = (v.attrs.get('Mountpoint') if getattr(v, 'attrs', None) else '') or ''
+            driver = (v.attrs.get('Driver') if getattr(v, 'attrs', None) else '') or ''
+            volumes_list.append({
+                'name': name,
+                'driver': driver,
+                'mountpoint': mountpoint,
+                'prunable': (name in prunable_names)
+            })
+        prunable_preview = [ {'name': v.name} for v in prunable[:5] ]
+
+        if request.method == 'POST' and request.form.get('action') == 'prune':
+            try:
+                result = client.volumes.prune()
+                deleted = result.get('VolumesDeleted') or []
+                num_deleted = len(deleted)
+                flash(f'Pruned {num_deleted} volumes', 'success')
+            except Exception as exc:
+                flash(f'Error pruning volumes: {exc}', 'danger')
+            return redirect(url_for('main.volumes'))
+
+        return render_template('volumes.html', volumes_count=volumes_count, dangling_count=dangling_count, volumes_list=volumes_list, prunable_preview=prunable_preview, select_form=select_form)
+    except ValueError as err:
+        flash(str(err), 'warning')
+        return render_template('volumes.html', volumes_count=0, dangling_count=0, select_form=select_form)
+
+
+@main_bp.route('/networks', methods=['GET','POST'])
+def networks():
+    """Networks management and pruning."""
+    select_form = SelectServerForm()
+    servers = DockerServer.query.all()
+    active_server = DockerServer.get_active()
+    select_form.server.choices = [(s.id, s.display_name) for s in servers]
+    if active_server:
+        select_form.server.data = active_server.id
+
+    networks_count = 0
+    prunable_count = 0
+    try:
+        client, serverurl = conf()
+        networks = client.networks.list() or []
+        networks_count = len(networks)
+
+        builtin = {'bridge', 'host', 'none'}
+        prunable_networks = []
+        networks_list = []
+        for n in networks:
+            name = getattr(n, 'name', '')
+            driver = (n.attrs.get('Driver') if getattr(n, 'attrs', None) else '') or ''
+            containers = n.attrs.get('Containers') if getattr(n, 'attrs', None) else {}
+            attached = len(containers) if isinstance(containers, dict) else 0
+            prunable = (attached == 0 and name not in builtin)
+            networks_list.append({'name': name, 'driver': driver, 'attached': attached, 'prunable': prunable})
+            if prunable:
+                prunable_networks.append({'name': name})
+        prunable_count = len(prunable_networks)
+        prunable_preview = prunable_networks[:5]
+
+        if request.method == 'POST' and request.form.get('action') == 'prune':
+            try:
+                result = client.networks.prune()
+                deleted = result.get('NetworksDeleted') or []
+                num_deleted = len(deleted)
+                flash(f'Pruned {num_deleted} networks', 'success')
+            except Exception as exc:
+                flash(f'Error pruning networks: {exc}', 'danger')
+            return redirect(url_for('main.networks'))
+
+        return render_template('networks.html', networks_count=networks_count, prunable_count=prunable_count, networks_list=networks_list, prunable_preview=prunable_preview, select_form=select_form)
+    except ValueError as err:
+        flash(str(err), 'warning')
+        return render_template('networks.html', networks_count=0, prunable_count=0, select_form=select_form)
 
 
 @main_bp.route('/addcon', methods=['GET', 'POST'])
