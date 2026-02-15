@@ -557,11 +557,31 @@ def networks():
         builtin = {'bridge', 'host', 'none'}
         prunable_networks = []
         networks_list = []
+
+        # Some Docker endpoints do not populate network.attrs['Containers'] in
+        # the listing response. Build a fallback map of network -> attached
+        # container count by scanning all containers (single API call).
+        container_network_counts = {}
+        try:
+            for c in client.containers.list(all=True):
+                nets = getattr(c, 'attrs', {}).get('NetworkSettings', {}).get('Networks', {}) or {}
+                for netname in nets.keys():
+                    container_network_counts[netname] = container_network_counts.get(netname, 0) + 1
+        except Exception:
+            # If container listing fails, keep counts empty and rely on network attrs.
+            container_network_counts = {}
+
         for n in networks:
             name = getattr(n, 'name', '')
             driver = (n.attrs.get('Driver') if getattr(n, 'attrs', None) else '') or ''
-            containers = n.attrs.get('Containers') if getattr(n, 'attrs', None) else {}
-            attached = len(containers) if isinstance(containers, dict) else 0
+            # Prefer the network's own 'Containers' info when available; otherwise
+            # fall back to the counts gathered from container listings.
+            containers = (n.attrs.get('Containers') if getattr(n, 'attrs', None) else None)
+            if isinstance(containers, dict):
+                attached = len(containers)
+            else:
+                attached = container_network_counts.get(name, 0)
+
             prunable = (attached == 0 and name not in builtin)
             networks_list.append({'name': name, 'driver': driver, 'attached': attached, 'prunable': prunable})
             if prunable:
