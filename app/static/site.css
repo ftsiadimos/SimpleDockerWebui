@@ -80,6 +80,23 @@ body { min-height: 100vh; background-color: #f4f6f9; }
 .json-string-truncated { cursor: pointer; text-decoration: underline; color: #74c0fc; }
 .json-string-full { display: none; }
 
+/* Search highlight for inspect JSON viewer (no layout shift) */
+.json-match { background: rgba(255,209,102,0.06); box-shadow: inset 3px 0 0 0 #ffd166; padding-left: 0.5rem; border-radius: 4px; box-sizing: border-box; }
+.json-match-active { background: rgba(255,209,102,0.14); box-shadow: inset 5px 0 0 0 #ff9f1c; padding-left: 0.5rem; border-radius: 4px; }
+
+/* Stable search count badge — fixed width so the search bar doesn't shift */
+#inspectSearchCount { min-width: 64px; display: inline-block; text-align: center; transition: opacity 0.12s ease; font-variant-numeric: tabular-nums; }
+#inspectSearchCount.inspect-count-empty { opacity: 0.45; color: #495057; background-color: rgba(255,255,255,0.03); }
+
+.inspect-nav-btn { padding: 0.22rem 0.45rem; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; }
+.inspect-nav-btn:disabled { opacity: 0.5; }
+
+/* Prevent layout shift: wrap long JSON strings and constrain widths inside the viewer */
+.inspect-content, .json-item, .json-children { max-width: 100%; box-sizing: border-box; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.json-string-full { display: none; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
+
+#inspectSearchInput { min-width: 160px; }
+
 /* Terminal specific */
 .terminal-container .terminal-header { padding: 0.5rem 1rem; }
 .terminal-body { padding: 1rem; max-height: 70vh; min-height: 400px; overflow-y: auto; overflow-x: auto; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.875rem; line-height: 1.6; }

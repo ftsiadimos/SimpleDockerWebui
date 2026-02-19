@@ -8,6 +8,25 @@
       <i class="fa-solid fa-circle-info text-light" aria-hidden="true"></i>
       <span class="text-light fw-medium">Inspect</span>
     </div>
+
+    <!-- Search bar: highlights matches only (no auto-expand). Use ▲/▼ to navigate & expand specific matches -->
+    <div class="input-group ms-3" style="max-width:520px; min-width:180px;">
+      <input id="inspectSearchInput" class="form-control form-control-sm" type="text" placeholder="Search inspect..." aria-label="Search inspect">
+      <button id="inspectSearchClear" class="btn btn-outline-light btn-sm" type="button" title="Clear search">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+
+      <!-- Prev / Next match buttons (will expand and show the matched node) -->
+      <button id="inspectPrevBtn" class="btn btn-outline-light btn-sm inspect-nav-btn ms-1" type="button" title="Previous match" aria-label="Previous match" disabled>
+        <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+      </button>
+      <button id="inspectNextBtn" class="btn btn-outline-light btn-sm inspect-nav-btn ms-1" type="button" title="Next match" aria-label="Next match" disabled>
+        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+      </button>
+
+      <span id="inspectSearchCount" class="badge bg-light text-dark ms-2 inspect-count inspect-count-empty" style="align-self:center;">—</span>
+    </div>
+
     <div class="btn-group" role="group" aria-label="Inspect controls">
       <button type="button" id="scrollTopBtn" class="btn btn-outline-light btn-log-control" title="Scroll to top" data-bs-toggle="tooltip">
         <i class="fa-solid fa-arrow-up" aria-hidden="true"></i> Top
@@ -132,6 +151,138 @@
     // Render the JSON
     const inspectData = {{ inspect_data | tojson }};
     document.getElementById('jsonViewer').innerHTML = renderJSON(inspectData);
+
+    // --- Inspect search: highlight-only (no auto-expand) + Prev/Next match navigation ---
+    let inspectMatches = [];
+    let currentMatchIndex = -1; // -1 means no focused match yet
+
+    function clearSearch() {
+      // remove match highlights
+      document.querySelectorAll('#jsonViewer .json-match').forEach(el => el.classList.remove('json-match','json-match-active'));
+      // hide any revealed full strings and show truncated placeholders again
+      document.querySelectorAll('#jsonViewer .json-string-full').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('#jsonViewer .json-string-truncated').forEach(el => el.style.display = '');
+
+      // collapse all expanded children to their default collapsed state
+      document.querySelectorAll('#jsonViewer .json-children').forEach(ch => {
+        ch.style.display = 'none';
+        const toggle = ch.parentElement ? ch.parentElement.querySelector('.json-toggle') : null;
+        if (toggle) toggle.textContent = '▶';
+      });
+      // keep the top-level root children expanded (level 0)
+      const rootItem = document.getElementById('jsonViewer')?.firstElementChild;
+      if (rootItem) {
+        const rootChildren = rootItem.querySelector('.json-children');
+        if (rootChildren) {
+          rootChildren.style.display = 'block';
+          const rootToggle = rootChildren.parentElement ? rootChildren.parentElement.querySelector('.json-toggle') : null;
+          if (rootToggle) rootToggle.textContent = '▼';
+        }
+      }
+
+      // reset navigation state
+      inspectMatches = [];
+      currentMatchIndex = -1;
+      updateNavButtons();
+    }
+
+    function expandAncestors(el) {
+      let node = el;
+      while (node && node.id !== 'jsonViewer') {
+        if (node.classList && node.classList.contains('json-children')) {
+          node.style.display = 'block';
+          const toggle = node.parentElement.querySelector('.json-toggle');
+          if (toggle) toggle.textContent = '▼';
+        }
+        node = node.parentElement;
+      }
+    }
+
+    function updateNavButtons() {
+      const prevBtn = document.getElementById('inspectPrevBtn');
+      const nextBtn = document.getElementById('inspectNextBtn');
+      const countEl = document.getElementById('inspectSearchCount');
+      // keep badge visible and stable width; use text + dimming to indicate empty state
+      if (!inspectMatches.length) {
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        countEl.textContent = '—';
+        countEl.classList.add('inspect-count-empty');
+        return;
+      }
+      // we have matches — ensure badge is active
+      countEl.classList.remove('inspect-count-empty');
+      if (currentMatchIndex < 0) {
+        prevBtn.disabled = false;
+        nextBtn.disabled = false;
+        countEl.textContent = `${inspectMatches.length} match${inspectMatches.length !== 1 ? 'es' : ''}`;
+      } else {
+        prevBtn.disabled = currentMatchIndex <= 0;
+        nextBtn.disabled = currentMatchIndex >= inspectMatches.length - 1;
+        countEl.textContent = `${currentMatchIndex + 1} / ${inspectMatches.length}`;
+      }
+    }
+
+    function searchInspect(query) {
+      const q = (query || '').trim();
+      clearSearch();
+      if (!q) return;
+      const ql = q.toLowerCase();
+      const items = Array.from(document.querySelectorAll('#jsonViewer .json-item'));
+      items.forEach(item => {
+        if (item.textContent.toLowerCase().includes(ql)) {
+          item.classList.add('json-match');
+          inspectMatches.push(item);
+        }
+      });
+      currentMatchIndex = -1;
+      updateNavButtons();
+    }
+
+    function revealMatchAndExpand(item, ql) {
+      expandAncestors(item);
+      item.querySelectorAll('.json-string-full').forEach(full => {
+        if (full.textContent.toLowerCase().includes(ql)) {
+          full.style.display = 'inline';
+          const trunc = full.previousElementSibling;
+          if (trunc && trunc.classList.contains('json-string-truncated')) trunc.style.display = 'none';
+        }
+      });
+    }
+
+    function goToMatch(index) {
+      if (!inspectMatches.length) return;
+      if (index < 0) index = 0;
+      if (index >= inspectMatches.length) index = inspectMatches.length - 1;
+      if (currentMatchIndex >= 0 && inspectMatches[currentMatchIndex]) {
+        inspectMatches[currentMatchIndex].classList.remove('json-match-active');
+      }
+      currentMatchIndex = index;
+      const item = inspectMatches[currentMatchIndex];
+      item.classList.add('json-match-active');
+      const query = document.getElementById('inspectSearchInput').value.trim().toLowerCase();
+      if (query) revealMatchAndExpand(item, query);
+      item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      updateNavButtons();
+    }
+
+    document.getElementById('inspectNextBtn').addEventListener('click', function(){
+      if (!inspectMatches.length) return;
+      const nextIndex = currentMatchIndex < 0 ? 0 : Math.min(currentMatchIndex + 1, inspectMatches.length - 1);
+      goToMatch(nextIndex);
+    });
+
+    document.getElementById('inspectPrevBtn').addEventListener('click', function(){
+      if (!inspectMatches.length) return;
+      const prevIndex = currentMatchIndex < 0 ? inspectMatches.length - 1 : Math.max(currentMatchIndex - 1, 0);
+      goToMatch(prevIndex);
+    });
+
+    // Wire up search input + clear button
+    const searchInput = document.getElementById('inspectSearchInput');
+    searchInput.addEventListener('input', (e) => searchInspect(e.target.value));
+    document.getElementById('inspectSearchClear').addEventListener('click', () => { searchInput.value = ''; clearSearch(); searchInput.focus(); });
+
   })();
 </script>
 {% endblock %}

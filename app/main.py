@@ -7,7 +7,7 @@ import paramiko # type: ignore
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_sock import Sock # type: ignore
 import logging
 
@@ -276,6 +276,12 @@ def containers():
     except ValueError as err:
         flash(str(err), 'warning')
         return render_template('containers.html', containers=[], serverurl=active_server, select_form=select_form)
+
+
+@main_bp.route('/favicon.ico')
+def favicon():
+    """Serve app favicon (avoid 404s from browsers requesting /favicon.ico)."""
+    return current_app.send_static_file('dockermanager.png')
 
 
 @main_bp.route('/about', methods=['GET'])
