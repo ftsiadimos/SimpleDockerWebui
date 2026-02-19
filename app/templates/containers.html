@@ -21,19 +21,19 @@
   {% if containers %}
   <div class="card-header bg-light border-0 d-flex justify-content-between align-items-center">
     <div class="btn-group btn-group-sm" role="group">
-      <button type="submit" name="submit_button" value="Start" class="btn btn-success" form="containerForm" data-bs-toggle="tooltip" title="Start selected containers">
+      <button type="submit" name="submit_button" value="Start" class="btn btn-success" form="containerForm" data-loading="true" data-bs-toggle="tooltip" title="Start selected containers">
         <i class="fa-solid fa-play me-1"></i>Start
       </button>
-      <button type="submit" name="submit_button" value="Stop" class="btn btn-warning" form="containerForm" data-bs-toggle="tooltip" title="Stop selected containers">
+      <button type="submit" name="submit_button" value="Stop" class="btn btn-warning" form="containerForm" data-loading="true" data-bs-toggle="tooltip" title="Stop selected containers">
         <i class="fa-solid fa-stop me-1"></i>Stop
       </button>
-      <button type="submit" name="submit_button" value="Restart" class="btn btn-info" form="containerForm" data-bs-toggle="tooltip" title="Restart selected containers">
+      <button type="submit" name="submit_button" value="Restart" class="btn btn-info" form="containerForm" data-loading="true" data-bs-toggle="tooltip" title="Restart selected containers">
         <i class="fa-solid fa-rotate me-1"></i>Restart
       </button>
       <button type="submit" name="submit_button" value="Delete" class="btn btn-danger" form="containerForm" data-bs-toggle="tooltip" title="Delete selected containers" onclick="return confirm('Are you sure you want to delete the selected container(s)?');">
         <i class="fa-solid fa-trash me-1"></i>Delete
       </button>
-      <button type="submit" formaction="{{ url_for('main.stats') }}" class="btn btn-secondary" form="containerForm" data-bs-toggle="tooltip" title="View stats for selected">
+      <button type="submit" formaction="{{ url_for('main.stats') }}" class="btn btn-secondary" form="containerForm" data-loading="true" data-bs-toggle="tooltip" title="View stats for selected">
         <i class="fa-solid fa-chart-bar me-1"></i>Stats
       </button>
     </div>

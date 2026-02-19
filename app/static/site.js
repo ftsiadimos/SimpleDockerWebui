@@ -48,4 +48,77 @@ document.addEventListener('DOMContentLoaded', function(){
     console.warn('Toast conversion failed:', e);
   }
 
+  // Show inline spinner only when the form actually SUBMITS (prevents "stuck" spinners
+  // when a button click is intercepted or submission is cancelled).
+  try {
+    var _lastClickedSubmitButton = null;
+
+    // track last clicked submit button to support browsers without event.submitter
+    document.querySelectorAll('button[data-loading]').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        _lastClickedSubmitButton = btn;
+        // clear after a short interval
+        setTimeout(function(){ if (_lastClickedSubmitButton === btn) _lastClickedSubmitButton = null; }, 500);
+      });
+    });
+
+    // Add spinner only after the submit event finishes and was NOT prevented.
+    document.addEventListener('submit', function(e){
+      try {
+        var form = e.target;
+        var submitBtn = e.submitter || _lastClickedSubmitButton || form.querySelector('button[type="submit"][data-loading]');
+
+        // schedule after other submit handlers so we can detect preventDefault()
+        setTimeout(function(){
+          if (e.defaultPrevented) return; // another handler cancelled submission
+          if (!submitBtn || !submitBtn.hasAttribute('data-loading')) return;
+
+          // add spinner if not present
+          if (!submitBtn.querySelector('.spinner-border')) {
+            var spinner = document.createElement('span');
+            spinner.className = 'spinner-border spinner-border-sm ms-2';
+            spinner.setAttribute('role', 'status');
+            spinner.setAttribute('aria-hidden', 'true');
+            submitBtn.appendChild(spinner);
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.setAttribute('aria-busy', 'true');
+
+          // disable sibling buttons inside the same .btn-group
+          var grp = submitBtn.closest('.btn-group');
+          if (grp) {
+            grp.querySelectorAll('button').forEach(function(s){ if (s !== submitBtn) s.disabled = true; });
+          }
+
+          // disable other submit buttons in the same form
+          form.querySelectorAll('button[type="submit"]').forEach(function(s){ if (s !== submitBtn) s.disabled = true; });
+
+        }, 0);
+
+      } catch (ex) {
+        console.warn('Submit spinner init failed:', ex);
+      }
+    }, true);
+
+    // Cleanup: when the page is shown (including back-navigation), restore any
+    // `data-loading` buttons — re-enable siblings that were temporarily disabled
+    // and remove leftover spinners so the UI isn't frozen after returning from stats.
+    window.addEventListener('pageshow', function(){
+      document.querySelectorAll('button[data-loading]').forEach(function(btn){
+        var hasSpinner = !!btn.querySelector('.spinner-border');
+        var isBusyAttr = btn.getAttribute('aria-busy') === 'true';
+        // only touch buttons that look like they were set to a loading state
+        if (!btn.disabled && !hasSpinner && !isBusyAttr) return;
+
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        var sp = btn.querySelector('.spinner-border'); if (sp) sp.remove();
+      });
+    });
+
+  } catch (e) {
+    console.warn('Button loading spinner init failed:', e);
+  }
+
 });

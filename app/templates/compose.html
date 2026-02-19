@@ -70,10 +70,10 @@
               <form method="post" class="d-inline">
                 <input type="hidden" name="compose_dir" value="{{ project.dir }}">
                 <div class="btn-group" role="group">
-                  <button type="submit" name="action" value="start" class="btn btn-success btn-sm" {% if project.running %}disabled{% endif %} data-bs-toggle="tooltip" title="Start project">
+                  <button type="submit" name="action" value="start" class="btn btn-success btn-sm" data-loading="true" {% if project.running %}disabled{% endif %} data-bs-toggle="tooltip" title="Start project">
                     <i class="fa-solid fa-play me-1"></i>Start
                   </button>
-                  <button type="submit" name="action" value="stop" class="btn btn-danger btn-sm" {% if not project.running %}disabled{% endif %} data-bs-toggle="tooltip" title="Stop project">
+                  <button type="submit" name="action" value="stop" class="btn btn-danger btn-sm" data-loading="true" {% if not project.running %}disabled{% endif %} data-bs-toggle="tooltip" title="Stop project">
                     <i class="fa-solid fa-stop me-1"></i>Stop
                   </button>
                 </div>
