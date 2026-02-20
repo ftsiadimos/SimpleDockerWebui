@@ -62,6 +62,12 @@ document.addEventListener('DOMContentLoaded', function(){
       });
     });
 
+    // Record initial disabled state for submit buttons so pageshow can restore only
+    // buttons that were disabled by a previous submission (not those intentionally disabled).
+    document.querySelectorAll('button[type="submit"]').forEach(function(btn){
+      btn.dataset.initialDisabled = btn.disabled ? '1' : '0';
+    });
+
     // Add spinner only after the submit event finishes and was NOT prevented.
     document.addEventListener('submit', function(e){
       try {
@@ -101,15 +107,17 @@ document.addEventListener('DOMContentLoaded', function(){
       }
     }, true);
 
-    // Cleanup: when the page is shown (including back-navigation), restore any
-    // `data-loading` buttons — re-enable siblings that were temporarily disabled
-    // and remove leftover spinners so the UI isn't frozen after returning from stats.
+    // Cleanup: on pageshow (including back-navigation), restore submit buttons that
+    // were disabled by a previous submission but weren't intentionally disabled.
     window.addEventListener('pageshow', function(){
-      document.querySelectorAll('button[data-loading]').forEach(function(btn){
+      document.querySelectorAll('button[type="submit"]').forEach(function(btn){
+        var initial = btn.dataset.initialDisabled === '1';
         var hasSpinner = !!btn.querySelector('.spinner-border');
         var isBusyAttr = btn.getAttribute('aria-busy') === 'true';
-        // only touch buttons that look like they were set to a loading state
+        // nothing to do
         if (!btn.disabled && !hasSpinner && !isBusyAttr) return;
+        // skip buttons that were initially disabled in the markup
+        if (initial) return;
 
         btn.disabled = false;
         btn.removeAttribute('aria-busy');
