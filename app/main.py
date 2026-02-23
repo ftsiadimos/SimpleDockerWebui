@@ -11,6 +11,21 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_sock import Sock # type: ignore
 import logging
 
+
+def _read_version() -> str:
+    """Return the contents of the top-level VERSION file (stripped).
+
+    If the file cannot be read for any reason we return ``"unknown"`` so the
+    UI doesn't break. This helper lives here because it is only used by the
+    simple ``/about`` view; no need to clutter the app config.
+    """
+    try:
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        with open(os.path.join(root, 'VERSION'), 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    except Exception:
+        return 'unknown'
+
 log = logging.getLogger(__name__)
 
 from app import db  # Only import db, not app, to avoid circular import
@@ -286,7 +301,10 @@ def favicon():
 
 @main_bp.route('/about', methods=['GET'])
 def about():
-    return render_template('about.html')
+    # read the version from disk each time we render the page so updates are
+    # immediately visible (keep behaviour simple for now).
+    version = _read_version()
+    return render_template('about.html', version=version)
 
 
 @main_bp.route('/settings', methods=['GET','POST'])
