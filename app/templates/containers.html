@@ -167,6 +167,20 @@
     // Custom table search with debounce
     var searchInput = document.getElementById('tableSearch');
     var searchTimeout = null;
+
+    // restore the search input if DataTables loaded a saved state that includes a search term
+    // (dt.search() will reflect the restored state after initialization).
+    if (dt.search()) {
+      searchInput.value = dt.search();
+    }
+
+    // also respond to the stateLoaded event in case state is restored later
+    dt.on('stateLoaded.dt', function(e, settings, data) {
+      if (data && data.search && data.search.search) {
+        searchInput.value = data.search.search;
+      }
+    });
+
     searchInput.addEventListener('input', function(e){
       clearTimeout(searchTimeout);
       var val = e.target.value;
