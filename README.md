@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://hub.docker.com/r/ftsiadimos/lightdockerwebui"><img src="https://img.shields.io/docker/pulls/ftsiadimos/lightdockerwebui?style=flat-square&logo=docker" alt="Docker Pulls"></a>
+  <a href="https://ghcr.io/ftsiadimos/simpledockerwebui"><img src="https://img.shields.io/badge/GHCR-available-blue?style=flat-square&logo=github" alt="GHCR Available"></a>
   <a href="https://github.com/ftsiadimos/lightdockerwebui/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Flask-3.x-000000.svg?style=flat-square&logo=flask" alt="Flask"></a>
@@ -100,28 +101,13 @@ LightDockerWebUI is a **clean, fast, and simple** web-based Docker management to
 
 ---
 
-## 🚀 Quick Start
-
-Get up and running in **30 seconds**:
-
-```bash
-docker run -d --restart unless-stopped \
- -p 8008:8008 --name=DockerManager \
- -v $(pwd)/instance:/app/instance \
- ftsiadimos/lightdockerwebui:latest
-```
-
-Then open **http://localhost:8008** in your browser. That's it! 🎉
-
----
-
 ## 📦 Installation Options
 
 <details>
 <summary><b>🐳 Docker (Recommended)</b></summary>
 
 ```bash
-# Pull and run
+# Pull and run using Docker Hub
 docker pull ftsiadimos/lightdockerwebui:latest
 
 docker run -d --restart unless-stopped \
@@ -129,6 +115,16 @@ docker run -d --restart unless-stopped \
 --name=DockerManager \
 -v $(pwd)/instance:/app/instance \
 ftsiadimos/lightdockerwebui:latest
+
+# or pull from GitHub Container Registry
+# (repository is named "simpledockerwebui" there)
+docker pull ghcr.io/ftsiadimos/simpledockerwebui:latest
+
+docker run -d --restart unless-stopped \
+-p 8008:8008 \
+--name=DockerManager \
+-v $(pwd)/instance:/app/instance \
+ghcr.io/ftsiadimos/simpledockerwebui:latest
 ```
 
 </details>
@@ -142,7 +138,7 @@ version: '3.8'
 
 services:
   DockerManager:
-    image: ftsiadimos/lightdockerwebui:latest
+    image: ftsiadimos/lightdockerwebui:latest  # or ghcr.io/ftsiadimos/simpledockerwebui:latest
     container_name: DockerManager
     ports:
       - "8008:8008"
