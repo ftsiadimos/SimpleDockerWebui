@@ -19,10 +19,10 @@
   </div>
 </div>
 
-<!-- xterm.js and fit addon (CDN) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.js"></script>
+<!-- xterm.js and fit addon (bundled locally for offline use) -->
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/xterm/xterm.css') }}" />
+<script src="{{ url_for('static', filename='vendor/xterm/xterm.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/xterm/xterm-addon-fit.js') }}"></script>
 
 <script>
   const output = document.getElementById('output');
