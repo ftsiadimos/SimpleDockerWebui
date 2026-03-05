@@ -129,7 +129,6 @@ ghcr.io/ftsiadimos/simpledockerwebui:latest
 
 </details>
 
-> ⚠️ **Offline Use**: all CSS/JS libraries are bundled under `app/static/vendor` so the UI works without internet access. When updating third‑party assets, place new files in that folder and adjust templates accordingly.
 
 <details>
 <summary><b>📄 Docker Compose</b></summary>
