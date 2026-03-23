@@ -155,6 +155,19 @@ docker-compose up -d
 </details>
 
 <details>
+<summary><b>🦾 ARM64 Support</b></summary>
+
+```bash
+# Build for both amd64 and arm64 (requires docker buildx + QEMU enabled)
+docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/ftsiadimos/simpledockerwebui:latest --push .
+
+# Run the arm64 image on arm64 host (or with qemu emulation on amd64)
+docker run --platform linux/arm64 -d --restart unless-stopped -p 8008:8008 -v $(pwd)/instance:/app/instance ghcr.io/ftsiadimos/simpledockerwebui:latest
+```
+
+</details>
+
+<details>
 <summary><b>🐍 From Source (Development)</b></summary>
 
 ```bash
