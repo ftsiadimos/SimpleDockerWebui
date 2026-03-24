@@ -28,8 +28,16 @@ def create_app(config_class=Config):
         if instance_path and not os.path.exists(instance_path):
             os.makedirs(instance_path, exist_ok=True)
 
-        # Create database tables if they don't exist
-        db.create_all()
+        # Create database tables if they don't exist.
+        # In production with multiple gunicorn workers, concurrent create_all() calls can race.
+        from sqlalchemy.exc import OperationalError
+        try:
+            db.create_all()
+        except OperationalError as exc:
+            if 'already exists' in str(exc).lower():
+                pass
+            else:
+                raise
 
     return app
 

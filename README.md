@@ -214,7 +214,51 @@ LightDockerWebUI supports **multiple Docker servers**. Configure them through th
 | \`FLASK_DEBUG\` | \`0\` | Enable debug mode (development only) |
 | \`SECRET_KEY\` | (random) | Flask secret key for sessions |
 | \`SQLALCHEMY_DATABASE_URI\` | \`sqlite:///serverinfo.db\` | Database connection string |
+## 🛰️ API: `/api/stats`
 
+LightDockerWebUI now exposes a lightweight JSON API for dashboard metrics.
+
+- `GET /api/stats` returns a JSON object with:
+  - `servers_count`
+  - `containers_count`
+  - `running_count`
+  - `images_count`
+  - `total_images`
+  - `total_images_size_gb`
+  - `networks_count`
+  - `volumes_count`
+  - `compose_stacks_count`
+  - `recent_activity`
+
+### Example usage
+
+```bash
+# get full metric object
+curl -s http://localhost:8008/api/stats | jq .
+
+# get total images
+curl -s http://localhost:8008/api/stats | jq '.total_images'
+
+# get total image size in GB
+curl -s http://localhost:8008/api/stats | jq -r '.total_images_size_gb'
+
+# single summary line
+curl -s http://localhost:8008/api/stats | jq -r '"images=\(.total_images) size=\(.total_images_size_gb)"'
+```
+
+### Note for custom host/port
+
+If the app is not on localhost:8008, change to your host, e.g.:
+
+```bash
+curl -s http://docker.myserver:5000/api/stats | jq .
+```
+
+### (Optional) Unix socket Access using netcat + HTTP over socket
+
+```bash
+printf 'GET /api/stats HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' | socat - UNIX-CONNECT:/var/run/docker.sock | jq .
+```
 ### Exposing Remote Docker Daemon
 
 To manage containers on a remote host, enable TCP on the Docker daemon:

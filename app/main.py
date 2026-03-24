@@ -7,7 +7,7 @@ import paramiko # type: ignore
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_sock import Sock # type: ignore
 import logging
 
@@ -108,6 +108,74 @@ def conf(use_cache=True):
         raise ValueError(f"Cannot connect to Docker at {base_url}: {exc}") from exc
 
     return client, serverurl
+
+
+def get_dashboard_stats():
+    """Collect global dashboard stats and recent activity."""
+    stats = {
+        'servers_count': len(DockerServer.query.all()),
+        'containers_count': 0,
+        'running_count': 0,
+        'images_count': 0,
+        'total_images': 0,
+        'total_images_size_gb': '0.00 GB',
+        'networks_count': 0,
+        'volumes_count': 0,
+        'compose_stacks_count': 0,
+        'recent_activity': [],
+    }
+
+    try:
+        client, _ = conf()
+        raw_containers = client.containers.list(all=True)
+        stats['containers_count'] = len(raw_containers)
+        stats['running_count'] = sum(1 for c in raw_containers if getattr(c, 'status', '') == 'running')
+        stats['images_count'] = len({
+            (c.attrs.get('Config', {}).get('Image', '') if getattr(c, 'attrs', None) else '')
+            for c in raw_containers
+        })
+
+        images = client.images.list()
+        stats['total_images'] = len(images)
+        total_images_size_bytes = 0
+        for img in images:
+            try:
+                total_images_size_bytes += img.attrs.get('Size', 0) if getattr(img, 'attrs', None) else 0
+            except Exception:
+                continue
+        stats['total_images_size_gb'] = f"{(total_images_size_bytes / (1024 ** 3)):.2f} GB"
+
+        stats['networks_count'] = len(client.networks.list())
+        stats['volumes_count'] = len(client.volumes.list())
+
+        compose_projects = set()
+        for c in raw_containers:
+            labels = getattr(c, 'labels', {}) or {}
+            proj = labels.get('com.docker.compose.project')
+            if proj:
+                compose_projects.add(proj)
+        stats['compose_stacks_count'] = len(compose_projects)
+
+        recent_activity = []
+        for c in raw_containers[-8:]:
+            try:
+                img = c.attrs.get('Config', {}).get('Image', '') if getattr(c, 'attrs', None) else ''
+            except Exception:
+                img = ''
+            recent_activity.append({
+                'name': getattr(c, 'name', '') or '',
+                'status': getattr(c, 'status', '') or '',
+                'image': img,
+            })
+
+        stats['recent_activity'] = recent_activity
+
+    except Exception:
+        # keep default zero values if Docker is unavailable
+        pass
+
+    return stats
+
 
 @main_bp.route('/', methods=['GET', 'POST'])
 def index():
@@ -253,6 +321,13 @@ def index():
                                select_form=select_form)
 
 
+
+
+@main_bp.route('/api/stats', methods=['GET'])
+def api_stats():
+    """API endpoint returning dashboard stats as JSON."""
+    stats = get_dashboard_stats()
+    return jsonify(stats)
 
 
 @main_bp.route('/containers', methods=['GET', 'POST'])
