@@ -1,0 +1,49 @@
+name: Reopen issue on maintainer comment
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  reopen_issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Reopen issue when maintainer comments
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.SALAMI_TOKEN }}
+          script: |
+            const comment = context.payload.comment;
+            const issue = context.payload.issue;
+
+            // Only act on comments on issues (not PR review comments)
+            if (!issue) {
+              core.info('Not an issue comment, skipping.');
+              return;
+            }
+
+            // Optionally, change the username to your bot/maintainer or add more logic
+            const allowedUsers = ['github-actions[bot]'];
+
+            if (!allowedUsers.includes(comment.user.login)) {
+              core.info(`Comment by ${comment.user.login} is not in allowed users list, skipping.`);
+              return;
+            }
+
+            if (issue.state === 'open') {
+              core.info('Issue already open. No action required.');
+              return;
+            }
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              state: 'open',
+            });
+
+            core.info(`Issue #${issue.number} reopened by comment from ${comment.user.login}.`);
