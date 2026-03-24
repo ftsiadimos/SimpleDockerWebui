@@ -2,7 +2,7 @@ name: Reopen issue on maintainer comment
 
 on:
   issue_comment:
-    types: [created]
+    types: [created, edited]
 
 jobs:
   reopen_issue:
@@ -24,20 +24,20 @@ jobs:
 
             // Only act on comments on issues (not PR review comments)
             if (!issue) {
-              core.info('Not an issue comment, skipping.');
+              console.log('Not an issue comment, skipping.');
               return;
             }
 
-            // Optionally, change the username to your bot/maintainer or add more logic
-            const allowedUsers = ['github-actions[bot]'];
+            // Maintainers or bot accounts allowed to reopen closed issues
+            const allowedUsers = ['ftsiadimos', 'github-actions[bot]'];
 
             if (!allowedUsers.includes(comment.user.login)) {
-              core.info(`Comment by ${comment.user.login} is not in allowed users list, skipping.`);
+              console.log(`Comment by ${comment.user.login} is not in allowed users list, skipping.`);
               return;
             }
 
             if (issue.state === 'open') {
-              core.info('Issue already open. No action required.');
+              console.log('Issue already open. No action required.');
               return;
             }
 
@@ -48,4 +48,4 @@ jobs:
               state: 'open',
             });
 
-            core.info(`Issue #${issue.number} reopened by comment from ${comment.user.login}.`);
+            console.log(`Issue #${issue.number} reopened by comment from ${comment.user.login}.`);
