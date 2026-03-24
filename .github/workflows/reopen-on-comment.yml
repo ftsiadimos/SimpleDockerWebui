@@ -1,5 +1,9 @@
 name: Reopen issue on maintainer comment
 
+# Opt into Node.js 24 for JavaScript-based actions to avoid deprecation warnings
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 on:
   issue_comment:
     types: [created, edited]
@@ -7,8 +11,6 @@ on:
 jobs:
   reopen_issue:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       issues: write
       contents: read
