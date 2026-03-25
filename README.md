@@ -95,7 +95,7 @@ LightDockerWebUI is a **clean, fast, and simple** web-based Docker management to
 ## Screenshot
 
 <p align="center">
-  <img src="mis/image1.png" alt="Dashboard" width="90%" />
+  <img src="mis/image.webp" alt="Dashboard" width="90%" />
 </p>
 <p align="center"><em>Dashboard — View and manage all containers</em></p>
 
