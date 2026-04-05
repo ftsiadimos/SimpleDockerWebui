@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block page_title %}Edit Compose File{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex align-items-center justify-content-between bg-light border-0">
+    <h5 class="mb-0">
+      <i class="fa-solid fa-file-code text-muted me-2"></i>
+      <code>{{ file_path }}</code>
+    </h5>
+    <a href="{{ url_for('main.git_compose') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="fas fa-arrow-left me-1"></i>Back
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <form method="post" action="{{ url_for('main.git_compose_edit') }}">
+      <input type="hidden" name="path" value="{{ file_path }}">
+      <div class="p-3">
+        <textarea name="content" id="composeEditor" class="form-control font-monospace"
+                  rows="30" spellcheck="false" style="tab-size: 2; font-size: 0.875rem; line-height: 1.5;">{{ content }}</textarea>
+      </div>
+      <div class="card-footer bg-light d-flex gap-2 justify-content-between align-items-center">
+        <div class="d-flex gap-2">
+          <button type="submit" name="save_action" value="save" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Save
+          </button>
+          <button type="submit" name="save_action" value="save_push" class="btn btn-success">
+            <i class="fas fa-cloud-upload-alt me-1"></i>Save &amp; Push
+          </button>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          {% if auto_push %}
+          <span class="badge bg-info"><i class="fas fa-sync me-1"></i>Auto-push enabled</span>
+          {% endif %}
+          <a href="{{ url_for('main.git_compose') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var editor = document.getElementById('composeEditor');
+  if (!editor) return;
+  // Handle Tab key for indentation
+  editor.addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      var start = this.selectionStart;
+      var end = this.selectionEnd;
+      this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+      this.selectionStart = this.selectionEnd = start + 2;
+    }
+  });
+});
+</script>
+
+{% endblock %}

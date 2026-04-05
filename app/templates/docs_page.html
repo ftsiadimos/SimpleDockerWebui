@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-10">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-light border-0 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+          <i class="fas fa-file-alt text-muted me-2 fs-5"></i>
+          <h3 class="mb-0">{{ title }}</h3>
+        </div>
+        <a href="{{ url_for('main.docs') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="fas fa-arrow-left me-1"></i>Back to Docs
+        </a>
+      </div>
+      <div class="card-body docs-content">
+        {{ content|safe }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .docs-content h2 { margin-top: 1.5rem; margin-bottom: 0.75rem; padding-bottom: 0.3rem; border-bottom: 1px solid #dee2e6; }
+  .docs-content h3 { margin-top: 1.25rem; margin-bottom: 0.5rem; }
+  .docs-content pre { background: #f8f9fa; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; border: 1px solid #dee2e6; }
+  .docs-content code { font-size: 0.875em; }
+  .docs-content pre code { background: transparent; padding: 0; }
+  .docs-content code:not(pre code) { background: #f8f9fa; padding: 0.15em 0.4em; border-radius: 0.25rem; color: #d63384; }
+  .docs-content table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+  .docs-content th, .docs-content td { padding: 0.5rem; border: 1px solid #dee2e6; }
+  .docs-content th { background: #f8f9fa; font-weight: 600; }
+  .docs-content ol, .docs-content ul { padding-left: 1.5rem; }
+  .docs-content blockquote { border-left: 4px solid #0d6efd; padding: 0.5rem 1rem; margin: 1rem 0; background: #f8f9fa; }
+</style>
+{% endblock %}

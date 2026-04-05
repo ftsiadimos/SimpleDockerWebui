@@ -64,6 +64,11 @@
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint in ['main.git_compose', 'main.git_compose_edit'] %}active{% endif %}" href="{{ url_for('main.git_compose') }}">
+              <i class="fas fa-code-branch me-2"></i> Git Compose
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link text-white {% if request.endpoint == 'main.images' %}active{% endif %}" href="{{ url_for('main.images') }}">
               <i class="fas fa-boxes-stacked me-2"></i> Images
             </a>
@@ -106,6 +111,11 @@
           <li class="nav-item">
             <a class="nav-link text-white {% if request.endpoint == 'main.about' %}active{% endif %}" href="{{ url_for('main.about') }}">
               <i class="fas fa-info-circle me-2"></i> About
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white {% if request.endpoint in ['main.docs', 'main.docs_page'] %}active{% endif %}" href="{{ url_for('main.docs') }}">
+              <i class="fas fa-book me-2"></i> Docs
             </a>
           </li>
         </ul>

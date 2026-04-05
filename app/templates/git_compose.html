@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% block page_title %}Git Compose{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body text-center p-4">
+        <div class="d-flex align-items-center justify-content-center mb-3">
+          <i class="fa-solid fa-folder-tree text-primary fs-1 me-3"></i>
+          <div class="text-start">
+            <div class="h1 mb-0 text-primary">{{ projects|length }}</div>
+            <div class="text-muted fw-semibold">Compose Projects</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body text-center p-4">
+        <div class="d-flex align-items-center justify-content-center mb-3">
+          <i class="fa-solid fa-code-branch text-success fs-1 me-3"></i>
+          <div class="text-start">
+            <div class="h5 mb-0 text-success">{{ git_status.branch if git_status and git_status.cloned else 'N/A' }}</div>
+            <div class="text-muted fw-semibold">Branch</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-body text-center p-4">
+        <div class="d-flex align-items-center justify-content-center mb-3">
+          <i class="fa-solid fa-sync text-info fs-1 me-3"></i>
+          <div class="text-start">
+            <div class="h6 mb-0 text-info">{{ git_config.last_synced.strftime('%Y-%m-%d %H:%M') if git_config and git_config.last_synced else 'Never' }}</div>
+            <div class="text-muted fw-semibold">Last Synced</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newProjectModal">
+    <i class="fas fa-plus me-1"></i>New Project
+  </button>
+  <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
+    <button type="submit" name="action" value="pull" class="btn btn-outline-success btn-sm" data-loading="true">
+      <i class="fas fa-sync me-1"></i>Pull Latest
+    </button>
+  </form>
+</div>
+
+<!-- New Project Modal -->
+<div class="modal fade" id="newProjectModal" tabindex="-1" aria-labelledby="newProjectModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('main.git_compose') }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="newProjectModalLabel"><i class="fas fa-folder-plus me-2"></i>New Compose Project</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="projectName" class="form-label">Project Name</label>
+            <input type="text" class="form-control" id="projectName" name="project_name"
+                   pattern="[a-zA-Z0-9][a-zA-Z0-9._-]*" required
+                   placeholder="my-app" autocomplete="off">
+            <div class="form-text">Creates a folder with a template docker-compose.yml. Use letters, numbers, hyphens, underscores.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" name="action" value="create" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Create
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-light border-0">
+    <h5 class="mb-0"><i class="fa-solid fa-code-branch text-muted me-2"></i>Git Compose Projects</h5>
+  </div>
+  <div class="card-body p-0">
+    {% if projects %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" id="gitcompose-table">
+        <thead class="table-light">
+          <tr>
+            <th class="border-0 fw-semibold"><i class="fa-solid fa-folder me-2 text-muted"></i>Project</th>
+            <th class="border-0 fw-semibold"><i class="fa-solid fa-file me-2 text-muted"></i>File</th>
+            <th class="border-0 fw-semibold"><i class="fa-solid fa-circle me-2 text-muted"></i>Status</th>
+            <th class="border-0 fw-semibold text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for project in projects %}
+          <tr>
+            <td class="align-middle">
+              <div class="fw-semibold">{{ project.project }}</div>
+            </td>
+            <td class="align-middle">
+              <code class="small">{{ project.relative_path }}</code>
+            </td>
+            <td class="align-middle">
+              {% if project.running %}
+              <span class="badge bg-success"><i class="fa-solid fa-play me-1"></i>Running</span>
+              {% elif project.running is false and project.deployed %}
+              <span class="badge bg-secondary"><i class="fa-solid fa-stop me-1"></i>Stopped</span>
+              {% else %}
+              <span class="badge bg-light text-dark"><i class="fa-solid fa-minus me-1"></i>Not Deployed</span>
+              {% endif %}
+            </td>
+            <td class="align-middle text-end">
+              <div class="btn-group" role="group">
+                <a href="{{ url_for('main.git_compose_edit', path=project.relative_path) }}" class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" title="Edit compose file">
+                  <i class="fa-solid fa-edit me-1"></i>Edit
+                </a>
+                <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
+                  <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
+                  <button type="submit" name="action" value="deploy" class="btn btn-success btn-sm" data-loading="true" data-bs-toggle="tooltip" title="Deploy project">
+                    <i class="fa-solid fa-rocket me-1"></i>Deploy
+                  </button>
+                </form>
+                <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
+                  <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
+                  <button type="submit" name="action" value="stop" class="btn btn-danger btn-sm" data-loading="true" {% if not project.running %}disabled{% endif %} data-bs-toggle="tooltip" title="Stop project">
+                    <i class="fa-solid fa-stop me-1"></i>Stop
+                  </button>
+                </form>
+                <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
+                  <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
+                  <button type="submit" name="action" value="delete" class="btn btn-outline-danger btn-sm" data-bs-toggle="tooltip" title="Delete compose file from repo"
+                          onclick="return confirm('Delete {{ project.relative_path }}? This removes the file from the git repo.')">
+                    <i class="fa-solid fa-trash me-1"></i>Delete
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <i class="fa-solid fa-folder-open text-muted fs-1 mb-3"></i>
+      <h5 class="text-muted">No compose files found in git repository</h5>
+      <p class="text-muted mb-0">Add docker-compose.yml files to your repository and pull to see them here.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#gitcompose-table').DataTable({
+        "paging": false,
+        "searching": true,
+        "ordering": true,
+        "info": false,
+        "columnDefs": [
+            { "orderable": false, "targets": 3 }
+        ]
+    });
+});
+</script>
+
+{% endblock %}

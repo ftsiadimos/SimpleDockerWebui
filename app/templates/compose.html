@@ -2,6 +2,10 @@
 {% block page_title %}Compose Projects{% endblock %}
 
 {% block content %}
+<div class="alert alert-light border d-flex align-items-center mb-4" role="alert">
+  <i class="fas fa-code-branch text-muted me-2"></i>
+  <span>Manage compose files from a git repository? <a href="{{ url_for('main.git_compose') }}">Go to Git Compose</a></span>
+</div>
 <div class="row g-4 mb-4">
   <div class="col-md-6">
     <div class="card shadow-sm border-0 h-100">

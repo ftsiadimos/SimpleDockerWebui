@@ -1,4 +1,5 @@
 """Database models for LightDockerWebUI."""
+from datetime import datetime, timezone
 from app import db
 
 
@@ -47,3 +48,29 @@ class DockerServer(db.Model):
 
 # Alias for backward compatibility
 Owner = DockerServer
+
+
+class GitRepoConfig(db.Model):
+    """Global git repository configuration for GitOps compose management."""
+    __tablename__ = "git_repo_config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    repo_url = db.Column(db.String(500), nullable=False)
+    token = db.Column(db.String(500), nullable=False)
+    branch = db.Column(db.String(100), nullable=False, default='main')
+    local_path = db.Column(db.String(500), nullable=False)
+    auto_push = db.Column(db.Boolean, default=True)
+    last_synced = db.Column(db.DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<GitRepoConfig {self.repo_url}>"
+
+    @classmethod
+    def get_config(cls):
+        """Get the global git repo config (single row)."""
+        return cls.query.first()
+
+    def mark_synced(self):
+        """Update the last_synced timestamp to now."""
+        self.last_synced = datetime.now(timezone.utc)
+        db.session.commit()

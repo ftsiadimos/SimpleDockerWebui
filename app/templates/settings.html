@@ -2,12 +2,13 @@
 {% block page_title %}Settings{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
+<div class="card shadow-sm mb-4">
   <div class="card-header">
-    <h3 class="mb-0">Settings</h3>
+    <h3 class="mb-0"><i class="fas fa-palette me-2 text-muted"></i>Theme</h3>
   </div>
   <div class="card-body">
     <form method="post">
+      <input type="hidden" name="form_action" value="theme">
       <div class="mb-3">
         <label for="themeSelect" class="form-label">Theme</label>
         <select id="themeSelect" name="theme" class="form-select">
@@ -25,8 +26,81 @@
   </div>
 </div>
 
+<div class="card shadow-sm">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <h3 class="mb-0"><i class="fas fa-code-branch me-2 text-muted"></i>Git Repository (GitOps)</h3>
+    {% if git_status and git_status.cloned %}
+    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Cloned</span>
+    {% elif git_config %}
+    <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Not Cloned</span>
+    {% else %}
+    <span class="badge bg-secondary">Not Configured</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    {% if git_status and git_status.cloned %}
+    <div class="alert alert-light border mb-3">
+      <div class="row small">
+        <div class="col-md-4"><strong>Branch:</strong> {{ git_status.branch }}</div>
+        <div class="col-md-4"><strong>Last commit:</strong> {{ git_status.last_commit[:50] if git_status.last_commit else 'N/A' }}</div>
+        <div class="col-md-4"><strong>Last synced:</strong> {{ git_config.last_synced.strftime('%Y-%m-%d %H:%M UTC') if git_config.last_synced else 'Never' }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <form method="post">
+      {{ git_form.hidden_tag() }}
+      <input type="hidden" name="form_action" value="git_save">
+      <div class="mb-3">
+        {{ git_form.repo_url.label(class="form-label") }}
+        {{ git_form.repo_url(class="form-control", value=git_config.repo_url if git_config else '') }}
+        <div class="form-text">HTTPS URL of your Gitea repository containing docker-compose files.</div>
+      </div>
+      <div class="mb-3">
+        {{ git_form.token.label(class="form-label") }}
+        {{ git_form.token(class="form-control") }}
+        <div class="form-text">
+          {% if git_config %}Token is stored. Leave blank to keep current token.{% else %}Personal access token for authentication.{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          {{ git_form.branch.label(class="form-label") }}
+          {{ git_form.branch(class="form-control", value=git_config.branch if git_config else 'main') }}
+        </div>
+        <div class="col-md-6 mb-3 d-flex align-items-end">
+          <div class="form-check">
+            {{ git_form.auto_push(class="form-check-input", checked=git_config.auto_push if git_config else True) }}
+            {{ git_form.auto_push.label(class="form-check-label") }}
+            <div class="form-text">Automatically commit and push when saving compose files.</div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit">
+          <i class="fas fa-save me-1"></i>{{ 'Update' if git_config else 'Save & Clone' }}
+        </button>
+        {% if git_status and git_status.cloned %}
+        <button class="btn btn-outline-success" type="submit" name="form_action" value="git_pull">
+          <i class="fas fa-sync me-1"></i>Pull Latest
+        </button>
+        {% endif %}
+        {% if git_config %}
+        <button class="btn btn-outline-danger" type="submit" name="form_action" value="git_delete"
+                onclick="return confirm('Remove git configuration and delete the local clone?')">
+          <i class="fas fa-trash me-1"></i>Remove
+        </button>
+        {% endif %}
+      </div>
+    </form>
+    <p class="text-muted small mt-3">
+      Configure a git repository with docker-compose files to manage deployments via GitOps.
+      After cloning, use <a href="{{ url_for('main.git_compose') }}">Git Compose</a> to browse, edit, and deploy.
+    </p>
+  </div>
+</div>
+
 <script>
-  // Live preview selection (does not persist until Save)
   document.addEventListener('DOMContentLoaded', function(){
     var s = document.getElementById('themeSelect');
     if (!s) return;
@@ -34,17 +108,13 @@
       document.body.classList.remove('theme-default', 'theme-terminal-dark');
       if (s.value && s.value !== 'default') document.body.classList.add('theme-' + s.value);
     });
-
-    // On submit, set cookie client-side so the theme applies immediately and reliably
     var form = s.closest('form');
     if (form) {
       form.addEventListener('submit', function(){
         var val = s.value || 'default';
         var expires = new Date();
         expires.setDate(expires.getDate() + 30);
-        // path=/ ensures cookie is available site-wide
         document.cookie = 'ldwui_theme=' + encodeURIComponent(val) + '; path=/; expires=' + expires.toUTCString();
-        // ensure body class is set immediately
         document.body.classList.remove('theme-default', 'theme-terminal-dark');
         if (val !== 'default') document.body.classList.add('theme-' + val);
       });

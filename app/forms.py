@@ -1,7 +1,7 @@
 """Form definitions for LightDockerWebUI."""
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, SelectField, PasswordField
-from wtforms.validators import Optional, Length, Regexp, DataRequired
+from wtforms import StringField, SubmitField, SelectField, PasswordField, BooleanField
+from wtforms.validators import Optional, Length, Regexp, DataRequired, URL
 
 
 class AddServerForm(FlaskForm):
@@ -58,6 +58,39 @@ class SelectServerForm(FlaskForm):
         validators=[DataRequired()]
     )
     submit_select = SubmitField('Connect')
+
+
+class GitRepoForm(FlaskForm):
+    """Form for configuring the global git repository for GitOps."""
+    repo_url = StringField(
+        'Repository URL',
+        validators=[
+            DataRequired(message='Repository URL is required'),
+            Length(max=500),
+            URL(message='Must be a valid URL (e.g. https://gitea.example.com/user/repo.git)')
+        ],
+        render_kw={'placeholder': 'https://gitea.example.com/user/compose-files.git'}
+    )
+    token = PasswordField(
+        'Personal Access Token',
+        validators=[
+            DataRequired(message='Token is required'),
+            Length(max=500)
+        ],
+        render_kw={'placeholder': 'Gitea personal access token', 'autocomplete': 'off'}
+    )
+    branch = StringField(
+        'Branch',
+        validators=[
+            DataRequired(),
+            Length(max=100),
+            Regexp(r'^[a-zA-Z0-9._/-]+$', message='Invalid branch name')
+        ],
+        render_kw={'placeholder': 'main'},
+        default='main'
+    )
+    auto_push = BooleanField('Auto commit & push on save', default=True)
+    submit_git = SubmitField('Save & Clone')
 
 
 # Backward compatibility alias

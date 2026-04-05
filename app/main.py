@@ -1,6 +1,8 @@
 """Main routes and WebSocket handlers for LightDockerWebUI."""
 import os
+import re
 import subprocess
+import html as html_module
 
 import docker
 import paramiko # type: ignore
@@ -29,8 +31,9 @@ def _read_version() -> str:
 log = logging.getLogger(__name__)
 
 from app import db  # Only import db, not app, to avoid circular import
-from app.models import DockerServer
-from app.forms import AddServerForm, SelectServerForm
+from app.models import DockerServer, GitRepoConfig
+from app.forms import AddServerForm, SelectServerForm, GitRepoForm
+from app import git_service
 
 main_bp = Blueprint('main', __name__)
 sock = Sock()
@@ -382,23 +385,268 @@ def about():
     return render_template('about.html', version=version)
 
 
+# ------------------------------------------------------------------
+# Documentation routes
+# ------------------------------------------------------------------
+
+# Registry of available docs (slug -> file path + metadata)
+_DOCS_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), 'docs')
+_DOCS_REGISTRY = [
+    {
+        'slug': 'gitea-actions',
+        'file': 'gitea-actions-example.md',
+        'title': 'Gitea Actions Integration',
+        'description': 'Deploy docker-compose projects automatically via Gitea Actions CI/CD.',
+    },
+]
+
+
+def _md_to_html(md_text: str) -> str:
+    """Convert simple Markdown to HTML without external dependencies."""
+    lines = md_text.split('\n')
+    html_parts: list[str] = []
+    in_code_block = False
+    in_list = False
+    in_table = False
+    table_header_done = False
+
+    for line in lines:
+        # Fenced code blocks
+        if line.strip().startswith('```'):
+            if in_code_block:
+                html_parts.append('</code></pre>')
+                in_code_block = False
+            else:
+                in_code_block = True
+                html_parts.append('<pre><code>')
+            continue
+        if in_code_block:
+            html_parts.append(html_module.escape(line))
+            continue
+
+        stripped = line.strip()
+
+        # Empty line
+        if not stripped:
+            if in_list:
+                html_parts.append('</ul>')
+                in_list = False
+            if in_table:
+                html_parts.append('</tbody></table>')
+                in_table = False
+                table_header_done = False
+            html_parts.append('')
+            continue
+
+        # Table rows
+        if '|' in stripped and stripped.startswith('|'):
+            cells = [c.strip() for c in stripped.strip('|').split('|')]
+            # Skip separator rows like |---|---|
+            if all(re.match(r'^[:\-]+$', c) for c in cells):
+                table_header_done = True
+                continue
+            if not in_table:
+                in_table = True
+                table_header_done = False
+                html_parts.append('<table class="table table-bordered"><thead><tr>')
+                for c in cells:
+                    html_parts.append(f'<th>{_md_inline(c)}</th>')
+                html_parts.append('</tr></thead><tbody>')
+                continue
+            html_parts.append('<tr>')
+            for c in cells:
+                html_parts.append(f'<td>{_md_inline(c)}</td>')
+            html_parts.append('</tr>')
+            continue
+
+        if in_table:
+            html_parts.append('</tbody></table>')
+            in_table = False
+            table_header_done = False
+
+        # Headings
+        m = re.match(r'^(#{1,6})\s+(.*)', stripped)
+        if m:
+            level = len(m.group(1))
+            html_parts.append(f'<h{level}>{_md_inline(m.group(2))}</h{level}>')
+            continue
+
+        # Unordered list items
+        m = re.match(r'^[-*]\s+(.*)', stripped)
+        if m:
+            if not in_list:
+                html_parts.append('<ul>')
+                in_list = True
+            html_parts.append(f'<li>{_md_inline(m.group(1))}</li>')
+            continue
+
+        # Ordered list items
+        m = re.match(r'^\d+\.\s+(.*)', stripped)
+        if m:
+            if not in_list:
+                html_parts.append('<ol>')
+                in_list = True
+            html_parts.append(f'<li>{_md_inline(m.group(1))}</li>')
+            continue
+
+        if in_list:
+            html_parts.append('</ul>')
+            in_list = False
+
+        # Paragraph
+        html_parts.append(f'<p>{_md_inline(stripped)}</p>')
+
+    # Close any open blocks
+    if in_code_block:
+        html_parts.append('</code></pre>')
+    if in_list:
+        html_parts.append('</ul>')
+    if in_table:
+        html_parts.append('</tbody></table>')
+
+    return '\n'.join(html_parts)
+
+
+def _md_inline(text: str) -> str:
+    """Handle inline markdown: bold, italic, code, links."""
+    text = html_module.escape(text)
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    text = re.sub(r'`(.+?)`', r'<code>\1</code>', text)
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+    return text
+
+
+@main_bp.route('/docs')
+def docs():
+    """Documentation index page."""
+    return render_template('docs.html', docs=_DOCS_REGISTRY)
+
+
+@main_bp.route('/docs/<slug>')
+def docs_page(slug):
+    """Render a single documentation page from a Markdown file."""
+    doc = next((d for d in _DOCS_REGISTRY if d['slug'] == slug), None)
+    if not doc:
+        flash('Documentation page not found.', 'warning')
+        return redirect(url_for('main.docs'))
+
+    file_path = os.path.join(_DOCS_DIR, doc['file'])
+    if not os.path.isfile(file_path):
+        flash('Documentation file missing.', 'danger')
+        return redirect(url_for('main.docs'))
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        md_content = f.read()
+
+    html_content = _md_to_html(md_content)
+    return render_template('docs_page.html', title=doc['title'], content=html_content)
+
+
 @main_bp.route('/settings', methods=['GET','POST'])
 def settings():
-    """User settings: select UI theme."""
+    """User settings: select UI theme and git repository config."""
     current = request.cookies.get('ldwui_theme', 'default')
     themes = [('default','Default'), ('terminal-dark','Terminal Dark')]
 
-    if request.method == 'POST':
-        theme = request.form.get('theme', 'default')
-        if theme not in [t[0] for t in themes]:
-            theme = 'default'
-        resp = redirect(url_for('main.settings'))
-        # persist for 30 days
-        resp.set_cookie('ldwui_theme', theme, max_age=30*24*3600)
-        flash('Theme updated.', 'success')
-        return resp
+    git_config = GitRepoConfig.get_config()
+    git_form = GitRepoForm(obj=git_config)
+    if git_config:
+        # Don't pre-fill the token field for security
+        git_form.token.data = ''
 
-    return render_template('settings.html', current_theme=current, themes=themes)
+    basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    default_local_path = os.path.join(basedir, 'instance', 'gitops-repo')
+
+    git_status = None
+    if git_config and git_config.local_path:
+        git_status = git_service.get_repo_status(git_config.local_path)
+
+    if request.method == 'POST':
+        action = request.form.get('form_action', '')
+
+        if action == 'theme':
+            theme = request.form.get('theme', 'default')
+            if theme not in [t[0] for t in themes]:
+                theme = 'default'
+            resp = redirect(url_for('main.settings'))
+            resp.set_cookie('ldwui_theme', theme, max_age=30*24*3600)
+            flash('Theme updated.', 'success')
+            return resp
+
+        elif action == 'git_save':
+            git_form = GitRepoForm(request.form)
+            if git_form.validate():
+                repo_url = git_form.repo_url.data.strip()
+                token = git_form.token.data.strip()
+                branch = git_form.branch.data.strip()
+                auto_push = git_form.auto_push.data
+
+                if not git_config:
+                    git_config = GitRepoConfig(
+                        repo_url=repo_url,
+                        token=token,
+                        branch=branch,
+                        local_path=default_local_path,
+                        auto_push=auto_push,
+                    )
+                    db.session.add(git_config)
+                else:
+                    git_config.repo_url = repo_url
+                    if token:  # only update token if provided
+                        git_config.token = token
+                    git_config.branch = branch
+                    git_config.auto_push = auto_push
+                    if not git_config.local_path:
+                        git_config.local_path = default_local_path
+                db.session.commit()
+
+                # Clone if not already cloned
+                if not git_service.is_repo_cloned(git_config.local_path):
+                    ok, msg = git_service.clone_repo(
+                        git_config.repo_url, git_config.token,
+                        git_config.branch, git_config.local_path)
+                    if ok:
+                        git_config.mark_synced()
+                        flash(msg, 'success')
+                    else:
+                        flash(msg, 'danger')
+                else:
+                    flash('Git configuration updated.', 'success')
+
+                return redirect(url_for('main.settings'))
+            else:
+                for field, errors in git_form.errors.items():
+                    for error in errors:
+                        flash(f'{field}: {error}', 'danger')
+
+        elif action == 'git_pull':
+            if git_config:
+                ok, msg = git_service.pull_repo(
+                    git_config.local_path, git_config.token, git_config.repo_url)
+                if ok:
+                    git_config.mark_synced()
+                    flash(msg, 'success')
+                else:
+                    flash(msg, 'danger')
+            else:
+                flash('No git repository configured.', 'warning')
+            return redirect(url_for('main.settings'))
+
+        elif action == 'git_delete':
+            if git_config:
+                import shutil
+                if git_config.local_path and os.path.isdir(git_config.local_path):
+                    shutil.rmtree(git_config.local_path, ignore_errors=True)
+                db.session.delete(git_config)
+                db.session.commit()
+                flash('Git configuration removed.', 'success')
+            return redirect(url_for('main.settings'))
+
+    return render_template('settings.html',
+                           current_theme=current, themes=themes,
+                           git_form=git_form, git_config=git_config,
+                           git_status=git_status)
 
 
 @main_bp.route('/compose', methods=['GET', 'POST'])
@@ -513,6 +761,214 @@ def compose():
     stopped_count = len(compose_projects) - running_count
     
     return render_template('compose.html', compose_projects=compose_projects, running_count=running_count, stopped_count=stopped_count)
+
+
+# ------------------------------------------------------------------
+# Git Compose routes
+# ------------------------------------------------------------------
+
+def _get_running_compose_projects():
+    """Return a dict keyed by compose project name with running/deployed status."""
+    projects = {}
+    try:
+        client, _ = conf()
+        containers = client.containers.list(all=True)
+        for c in containers:
+            labels = c.labels or {}
+            proj_name = labels.get('com.docker.compose.project', '')
+            if proj_name:
+                if proj_name not in projects:
+                    projects[proj_name] = {'running': False, 'deployed': True}
+                if c.status == 'running':
+                    projects[proj_name]['running'] = True
+    except Exception:
+        pass
+    return projects
+
+
+@main_bp.route('/gitcompose', methods=['GET', 'POST'])
+def git_compose():
+    """Browse and manage compose projects from the cloned git repo."""
+    git_config = GitRepoConfig.get_config()
+    if not git_config:
+        flash('No git repository configured. Set it up in Settings.', 'warning')
+        return redirect(url_for('main.settings'))
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'pull':
+            ok, msg = git_service.pull_repo(
+                git_config.local_path, git_config.token, git_config.repo_url)
+            if ok:
+                git_config.mark_synced()
+                flash(msg, 'success')
+            else:
+                flash(msg, 'danger')
+            return redirect(url_for('main.git_compose'))
+
+        if action == 'create':
+            project_name = request.form.get('project_name', '').strip()
+            if not project_name:
+                flash('Project name is required.', 'danger')
+                return redirect(url_for('main.git_compose'))
+            try:
+                ok, msg = git_service.create_compose_project(
+                    git_config.local_path, project_name)
+                if ok:
+                    flash(msg, 'success')
+                    if git_config.auto_push:
+                        rel_path = os.path.join(project_name, 'docker-compose.yml')
+                        ok2, msg2 = git_service.commit_and_push(
+                            git_config.local_path, rel_path,
+                            message=f'Add {project_name}')
+                        if ok2:
+                            flash(msg2, 'success')
+                        else:
+                            flash(msg2, 'danger')
+                else:
+                    flash(msg, 'danger')
+            except ValueError as e:
+                flash(str(e), 'danger')
+            return redirect(url_for('main.git_compose'))
+
+        compose_path = request.form.get('compose_path', '')
+        if not compose_path:
+            flash('No compose file specified.', 'danger')
+            return redirect(url_for('main.git_compose'))
+
+        # Determine the absolute compose dir from relative path
+        try:
+            abs_file = git_service._safe_path(git_config.local_path, compose_path)
+        except ValueError:
+            flash('Invalid path.', 'danger')
+            return redirect(url_for('main.git_compose'))
+
+        compose_dir = os.path.dirname(abs_file)
+        compose_filename = os.path.basename(abs_file)
+
+        base_url, server_obj = get_docker_base_url()
+        env = os.environ.copy()
+        env['DOCKER_HOST'] = base_url
+
+        if action == 'deploy':
+            command = f'docker compose -f "{compose_filename}" up -d'
+            try:
+                result = subprocess.run(command, shell=True, env=env,
+                                        cwd=compose_dir,
+                                        capture_output=True, text=True, timeout=120)
+            except subprocess.TimeoutExpired:
+                flash('Timeout deploying compose project.', 'danger')
+                return redirect(url_for('main.git_compose'))
+            if result.returncode == 0:
+                flash(f'Deployed {compose_path} successfully.', 'success')
+            else:
+                flash(f'Deploy error: {result.stderr}', 'danger')
+
+        elif action == 'stop':
+            command = f'docker compose -f "{compose_filename}" stop'
+            try:
+                result = subprocess.run(command, shell=True, env=env,
+                                        cwd=compose_dir,
+                                        capture_output=True, text=True, timeout=60)
+            except subprocess.TimeoutExpired:
+                flash('Timeout stopping compose project.', 'danger')
+                return redirect(url_for('main.git_compose'))
+            if result.returncode == 0:
+                flash(f'Stopped {compose_path}.', 'success')
+            else:
+                flash(f'Stop error: {result.stderr}', 'danger')
+
+        elif action == 'delete':
+            try:
+                ok, msg = git_service.delete_compose_project(
+                    git_config.local_path, compose_path)
+                if ok:
+                    flash(msg, 'success')
+                    if git_config.auto_push:
+                        ok2, msg2 = git_service.commit_and_push(
+                            git_config.local_path, compose_path,
+                            message=f'Delete {compose_path}')
+                        if ok2:
+                            flash(msg2, 'success')
+                        else:
+                            flash(msg2, 'danger')
+                else:
+                    flash(msg, 'danger')
+            except ValueError as e:
+                flash(str(e), 'danger')
+
+        return redirect(url_for('main.git_compose'))
+
+    # GET — list compose files and cross-reference with running containers
+    git_status = git_service.get_repo_status(git_config.local_path)
+    projects = git_service.list_compose_files(git_config.local_path)
+    running_projects = _get_running_compose_projects()
+
+    for p in projects:
+        # Compose project name = directory name (or repo root name)
+        proj_name = p['relative_dir'] if p['relative_dir'] else os.path.basename(os.path.realpath(git_config.local_path))
+        status = running_projects.get(proj_name, {})
+        p['running'] = status.get('running', False)
+        p['deployed'] = status.get('deployed', False)
+
+    return render_template('git_compose.html',
+                           projects=projects, git_config=git_config,
+                           git_status=git_status)
+
+
+@main_bp.route('/gitcompose/edit', methods=['GET', 'POST'])
+def git_compose_edit():
+    """Edit a compose file from the git repo."""
+    git_config = GitRepoConfig.get_config()
+    if not git_config:
+        flash('No git repository configured.', 'warning')
+        return redirect(url_for('main.settings'))
+
+    if request.method == 'POST':
+        file_path = request.form.get('path', '')
+        content = request.form.get('content', '')
+        save_action = request.form.get('save_action', 'save')
+
+        try:
+            ok, msg = git_service.save_compose_file(
+                git_config.local_path, file_path, content)
+            if not ok:
+                flash(msg, 'danger')
+                return render_template('edit_compose.html',
+                                       file_path=file_path, content=content,
+                                       auto_push=git_config.auto_push)
+            flash(msg, 'success')
+
+            # Push if requested or auto_push enabled
+            if save_action == 'save_push' or git_config.auto_push:
+                ok, msg = git_service.commit_and_push(
+                    git_config.local_path, file_path)
+                if ok:
+                    flash(msg, 'success')
+                else:
+                    flash(msg, 'danger')
+        except ValueError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('main.git_compose'))
+
+        return redirect(url_for('main.git_compose'))
+
+    # GET — show editor
+    file_path = request.args.get('path', '')
+    if not file_path:
+        flash('No file specified.', 'danger')
+        return redirect(url_for('main.git_compose'))
+
+    try:
+        content = git_service.read_compose_file(git_config.local_path, file_path)
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('main.git_compose'))
+
+    return render_template('edit_compose.html',
+                           file_path=file_path, content=content,
+                           auto_push=git_config.auto_push)
 
 
 @main_bp.route('/images', methods=['GET','POST'])
