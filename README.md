@@ -88,6 +88,28 @@ LightDockerWebUI is a **clean, fast, and simple** web-based Docker management to
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+### 🔀 GitOps for Compose
+- Clone a git repo with docker-compose files
+- Browse, create, edit, and delete compose projects
+- Save & push changes back to Gitea/GitHub
+- Deploy or stop projects directly from the UI
+- Auto-push on save (optional)
+- Gitea Actions CI/CD integration
+
+</td>
+<td width="50%">
+
+### 🧹 Resource Management
+- **Images**: Browse all images, prune dangling
+- **Volumes**: List and prune unused volumes
+- **Networks**: View attached containers, prune empty
+- Reclaimed space reporting after prune
+
+</td>
+</tr>
 </table>
 
 ---
@@ -281,6 +303,38 @@ sudo systemctl restart docker
 
 ---
 
+## 🔀 GitOps for Compose
+
+LightDockerWebUI can manage docker-compose projects from a **git repository** (Gitea, GitHub, etc.), giving you a full GitOps workflow:
+
+### Setup
+
+1. Go to **Settings** → **Git Repository (GitOps)**
+2. Enter your repository HTTPS URL and a Personal Access Token
+3. Choose the branch (default: `main`) and enable **Auto-push** if desired
+4. Click **Save & Clone** — the repo is cloned locally
+
+### Usage
+
+- **Browse** — Navigate to **Git Compose** in the sidebar to see all compose projects
+- **Create** — Click "New Project" to scaffold a new project folder with a template `docker-compose.yml`
+- **Edit** — Open any compose file in the built-in editor with YAML validation
+- **Deploy / Stop** — Deploy or stop projects directly to the connected Docker host
+- **Delete** — Remove compose projects from the repo
+- **Save & Push** — Changes are committed and pushed to your git remote (automatically if auto-push is on)
+
+### Gitea Actions Integration
+
+For automatic deployment on push, see the [Gitea Actions example](docs/gitea-actions-example.md) which provides ready-to-use CI/CD workflows.
+
+### Architecture Notes
+
+- Compose files are stored in `instance/gitops-repo/` (persisted via the Docker volume mount `./instance:/app/instance`)
+- The app uses the Docker CLI with `DOCKER_HOST` to deploy to remote Docker daemons
+- Git operations use the `git` CLI (installed in the Docker image) with PAT authentication
+
+---
+
 ## 🏗️ Project Structure
 
 ```
@@ -288,10 +342,12 @@ lightdockerwebui/
 ├── app/
 │   ├── __init__.py          # Flask application factory
 │   ├── main.py              # Routes, WebSocket handlers
-│   ├── models.py            # SQLAlchemy models (DockerServer)
-│   ├── forms.py             # WTForms (AddServer, SelectServer)
+│   ├── models.py            # SQLAlchemy models (DockerServer, GitRepoConfig)
+│   ├── forms.py             # WTForms (AddServer, SelectServer, GitRepo)
+│   ├── git_service.py       # Git operations (clone, pull, commit, push)
 │   ├── static/              # CSS, JavaScript, images
 │   └── templates/           # Jinja2 HTML templates
+├── docs/                    # Documentation (rendered in-app)
 ├── config.py                # Flask configuration classes
 ├── start.py                 # Application entry point
 ├── requirements.txt         # Python dependencies
