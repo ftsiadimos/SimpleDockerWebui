@@ -74,3 +74,48 @@ class GitRepoConfig(db.Model):
         """Update the last_synced timestamp to now."""
         self.last_synced = datetime.now(timezone.utc)
         db.session.commit()
+
+
+class ProjectServerMapping(db.Model):
+    """Maps a git compose project (by relative path) to a target Docker server."""
+    __tablename__ = "project_server_mapping"
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_path = db.Column(db.String(500), nullable=False, unique=True)
+    server_id = db.Column(
+        db.Integer,
+        db.ForeignKey('docker_server.id', ondelete='SET NULL'),
+        nullable=True,
+    )
+
+    server = db.relationship('DockerServer', lazy='joined')
+
+    def __repr__(self):
+        return f"<ProjectServerMapping {self.project_path} -> server {self.server_id}>"
+
+    @classmethod
+    def get_server_for_project(cls, project_path):
+        """Return the assigned DockerServer for a project, or None."""
+        mapping = cls.query.filter_by(project_path=project_path).first()
+        if mapping and mapping.server:
+            return mapping.server
+        return None
+
+    @classmethod
+    def set_server_for_project(cls, project_path, server_id):
+        """Create or update the server mapping for a project.
+
+        Pass server_id=None to clear the assignment (fall back to active).
+        """
+        mapping = cls.query.filter_by(project_path=project_path).first()
+        if server_id is None:
+            if mapping:
+                db.session.delete(mapping)
+                db.session.commit()
+            return
+        if mapping:
+            mapping.server_id = server_id
+        else:
+            mapping = cls(project_path=project_path, server_id=server_id)
+            db.session.add(mapping)
+        db.session.commit()

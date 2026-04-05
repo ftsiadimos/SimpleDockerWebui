@@ -31,7 +31,7 @@ def _read_version() -> str:
 log = logging.getLogger(__name__)
 
 from app import db  # Only import db, not app, to avoid circular import
-from app.models import DockerServer, GitRepoConfig
+from app.models import DockerServer, GitRepoConfig, ProjectServerMapping
 from app.forms import AddServerForm, SelectServerForm, GitRepoForm
 from app import git_service
 
@@ -392,6 +392,12 @@ def about():
 # Registry of available docs (slug -> file path + metadata)
 _DOCS_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')), 'docs')
 _DOCS_REGISTRY = [
+    {
+        'slug': 'git-compose-guide',
+        'file': 'git-compose-guide.md',
+        'title': 'Git Compose — Deploy Guide',
+        'description': 'How to use Git Compose to deploy projects to Docker servers without CI/CD.',
+    },
     {
         'slug': 'gitea-actions',
         'file': 'gitea-actions-example.md',
@@ -847,7 +853,24 @@ def git_compose():
         compose_dir = os.path.dirname(abs_file)
         compose_filename = os.path.basename(abs_file)
 
-        base_url, server_obj = get_docker_base_url()
+        if action == 'assign_server':
+            raw_sid = request.form.get('server_id', '')
+            server_id = int(raw_sid) if raw_sid.isdigit() else None
+            ProjectServerMapping.set_server_for_project(compose_path, server_id)
+            flash(f'Server assignment updated for {compose_path}.', 'success')
+            return redirect(url_for('main.git_compose'))
+
+        # Resolve target server: form override > project assignment > active
+        override_sid = request.form.get('server_id', '')
+        if override_sid.isdigit():
+            target_server = DockerServer.query.get(int(override_sid))
+        else:
+            target_server = ProjectServerMapping.get_server_for_project(compose_path)
+        if target_server and target_server.is_configured:
+            base_url = f"tcp://{target_server.host}:{target_server.port}"
+        else:
+            base_url, _ = get_docker_base_url()
+
         env = os.environ.copy()
         env['DOCKER_HOST'] = base_url
 
@@ -904,6 +927,8 @@ def git_compose():
     git_status = git_service.get_repo_status(git_config.local_path)
     projects = git_service.list_compose_files(git_config.local_path)
     running_projects = _get_running_compose_projects()
+    servers = DockerServer.query.all()
+    active_server = DockerServer.get_active()
 
     for p in projects:
         # Compose project name = directory name (or repo root name)
@@ -911,10 +936,15 @@ def git_compose():
         status = running_projects.get(proj_name, {})
         p['running'] = status.get('running', False)
         p['deployed'] = status.get('deployed', False)
+        # Attach assigned server info
+        assigned = ProjectServerMapping.get_server_for_project(p['relative_path'])
+        p['server_id'] = assigned.id if assigned else None
+        p['server_name'] = assigned.display_name if assigned else None
 
     return render_template('git_compose.html',
                            projects=projects, git_config=git_config,
-                           git_status=git_status)
+                           git_status=git_status, servers=servers,
+                           active_server=active_server)
 
 
 @main_bp.route('/gitcompose/edit', methods=['GET', 'POST'])

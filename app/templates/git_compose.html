@@ -96,6 +96,7 @@
           <tr>
             <th class="border-0 fw-semibold"><i class="fa-solid fa-folder me-2 text-muted"></i>Project</th>
             <th class="border-0 fw-semibold"><i class="fa-solid fa-file me-2 text-muted"></i>File</th>
+            <th class="border-0 fw-semibold"><i class="fa-solid fa-server me-2 text-muted"></i>Target Server</th>
             <th class="border-0 fw-semibold"><i class="fa-solid fa-circle me-2 text-muted"></i>Status</th>
             <th class="border-0 fw-semibold text-end">Actions</th>
           </tr>
@@ -108,6 +109,18 @@
             </td>
             <td class="align-middle">
               <code class="small">{{ project.relative_path }}</code>
+            </td>
+            <td class="align-middle">
+              <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline server-assign-form">
+                <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
+                <input type="hidden" name="action" value="assign_server">
+                <select name="server_id" class="form-select form-select-sm server-select" data-path="{{ project.relative_path }}" style="min-width:140px" onchange="this.form.submit()">
+                  <option value=""{% if not project.server_id %} selected{% endif %}>Active Server{% if active_server %} ({{ active_server.display_name }}){% endif %}</option>
+                  {% for s in servers %}
+                  <option value="{{ s.id }}"{% if project.server_id == s.id %} selected{% endif %}>{{ s.display_name }}</option>
+                  {% endfor %}
+                </select>
+              </form>
             </td>
             <td class="align-middle">
               {% if project.running %}
@@ -125,12 +138,14 @@
                 </a>
                 <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
                   <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
+                  <input type="hidden" name="server_id" value="{{ project.server_id or '' }}">
                   <button type="submit" name="action" value="deploy" class="btn btn-success btn-sm" data-loading="true" data-bs-toggle="tooltip" title="Deploy project">
                     <i class="fa-solid fa-rocket me-1"></i>Deploy
                   </button>
                 </form>
                 <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
                   <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
+                  <input type="hidden" name="server_id" value="{{ project.server_id or '' }}">
                   <button type="submit" name="action" value="stop" class="btn btn-danger btn-sm" data-loading="true" {% if not project.running %}disabled{% endif %} data-bs-toggle="tooltip" title="Stop project">
                     <i class="fa-solid fa-stop me-1"></i>Stop
                   </button>
@@ -167,7 +182,7 @@ $(document).ready(function() {
         "ordering": true,
         "info": false,
         "columnDefs": [
-            { "orderable": false, "targets": 3 }
+            { "orderable": false, "targets": [2, 4] }
         ]
     });
 });
