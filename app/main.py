@@ -588,6 +588,10 @@ def settings():
                 branch = git_form.branch.data.strip()
                 auto_push = git_form.auto_push.data
 
+                if not git_config and not token:
+                    flash('Token is required when configuring a new git repository.', 'danger')
+                    return redirect(url_for('main.settings'))
+
                 if not git_config:
                     git_config = GitRepoConfig(
                         repo_url=repo_url,
@@ -630,6 +634,23 @@ def settings():
             if git_config:
                 ok, msg = git_service.pull_repo(
                     git_config.local_path, git_config.token, git_config.repo_url)
+                if ok:
+                    git_config.mark_synced()
+                    flash(msg, 'success')
+                else:
+                    flash(msg, 'danger')
+            else:
+                flash('No git repository configured.', 'warning')
+            return redirect(url_for('main.settings'))
+
+        elif action == 'git_reclone':
+            if git_config:
+                import shutil
+                if git_config.local_path and os.path.isdir(git_config.local_path):
+                    shutil.rmtree(git_config.local_path, ignore_errors=True)
+                ok, msg = git_service.clone_repo(
+                    git_config.repo_url, git_config.token,
+                    git_config.branch, git_config.local_path)
                 if ok:
                     git_config.mark_synced()
                     flash(msg, 'success')
@@ -829,7 +850,9 @@ def git_compose():
                     rel_path = os.path.join(project_name, 'docker-compose.yml')
                     ok2, msg2 = git_service.commit_and_push(
                         git_config.local_path, rel_path,
-                        message=f'Add {project_name}')
+                        message=f'Add {project_name}',
+                        repo_url=git_config.repo_url,
+                        token=git_config.token)
                     if ok2:
                         flash(msg2, 'success')
                     else:
@@ -930,7 +953,9 @@ def git_compose():
                     if git_config.auto_push:
                         ok2, msg2 = git_service.commit_and_push(
                             git_config.local_path, compose_path,
-                            message=f'Delete {compose_path}')
+                            message=f'Delete {compose_path}',
+                            repo_url=git_config.repo_url,
+                            token=git_config.token)
                         if ok2:
                             flash(msg2, 'success')
                         else:
@@ -992,7 +1017,9 @@ def git_compose_edit():
             # Push if requested or auto_push enabled
             if save_action == 'save_push' or git_config.auto_push:
                 ok, msg = git_service.commit_and_push(
-                    git_config.local_path, file_path)
+                    git_config.local_path, file_path,
+                    repo_url=git_config.repo_url,
+                    token=git_config.token)
                 if ok:
                     flash(msg, 'success')
                 else:

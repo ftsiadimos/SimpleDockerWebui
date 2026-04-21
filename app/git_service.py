@@ -268,8 +268,16 @@ def delete_compose_project(local_path: str, relative_path: str) -> tuple[bool, s
     return True, f"Deleted {relative_path}."
 
 
+def _set_remote_auth_url(local_path: str, repo_url: str, token: str) -> None:
+    """Set the origin remote URL to include the saved token."""
+    authed_url = _authenticated_url(repo_url, token)
+    _run_git(['remote', 'set-url', 'origin', authed_url], cwd=local_path)
+
+
 def commit_and_push(local_path: str, relative_path: str,
-                    message: str | None = None) -> tuple[bool, str]:
+                    message: str | None = None,
+                    repo_url: str | None = None,
+                    token: str | None = None) -> tuple[bool, str]:
     """Stage, commit, and push changes for a compose file.
 
     Returns ``(success, message)``.
@@ -295,9 +303,13 @@ def commit_and_push(local_path: str, relative_path: str,
             return True, "No changes to commit."
         return False, f"git commit failed: {result.stderr}"
 
+    if token and repo_url:
+        _set_remote_auth_url(local_path, repo_url, token)
+
     result = _run_git(['push'], cwd=local_path)
     if result.returncode != 0:
-        return False, f"git push failed: {result.stderr}"
+        err = _sanitize_output(result.stderr, token)
+        return False, f"git push failed: {err}"
 
     return True, "Changes committed and pushed."
 

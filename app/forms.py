@@ -74,7 +74,7 @@ class GitRepoForm(FlaskForm):
     token = PasswordField(
         'Personal Access Token',
         validators=[
-            DataRequired(message='Token is required'),
+            Optional(),
             Length(max=500)
         ],
         render_kw={'placeholder': 'Gitea personal access token', 'autocomplete': 'off'}

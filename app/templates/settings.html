@@ -85,6 +85,12 @@
           <i class="fas fa-sync me-1"></i>Pull Latest
         </button>
         {% endif %}
+        {% if git_status and git_status.cloned %}
+        <button class="btn btn-outline-warning" type="submit" name="form_action" value="git_reclone"
+                onclick="return confirm('Delete the local clone and re-clone fresh from the remote?')">
+          <i class="fas fa-redo me-1"></i>Re-clone Fresh
+        </button>
+        {% endif %}
         {% if git_config %}
         <button class="btn btn-outline-danger" type="submit" name="form_action" value="git_delete"
                 onclick="return confirm('Remove git configuration and delete the local clone?')">
