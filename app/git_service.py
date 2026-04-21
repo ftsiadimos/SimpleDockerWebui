@@ -232,17 +232,17 @@ def create_compose_project(local_path: str, project_name: str) -> tuple[bool, st
 
     os.makedirs(target_dir, exist_ok=True)
 
-    template = """services:
-  app:
-    image: nginx:latest
-    ports:
-      - "8080:80"
-    restart: unless-stopped
-"""
+    # Use string concatenation so the literal "services: {}" is not
+    # misinterpreted as a .format() positional placeholder.
+    template = (
+        f"# docker-compose.yml for project: {project_name}\n"
+        "# Edit this file and save/push before deploying.\n"
+        "services: {}\n"
+    )
     with open(compose_file, 'w', encoding='utf-8') as f:
         f.write(template)
 
-    return True, f"Created project '{project_name}' with template docker-compose.yml."
+    return True, f"Created project '{project_name}'. Edit the compose file and save to deploy."
 
 
 def delete_compose_project(local_path: str, relative_path: str) -> tuple[bool, str]:

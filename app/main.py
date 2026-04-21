@@ -823,15 +823,17 @@ def git_compose():
                     git_config.local_path, project_name)
                 if ok:
                     flash(msg, 'success')
-                    if git_config.auto_push:
-                        rel_path = os.path.join(project_name, 'docker-compose.yml')
-                        ok2, msg2 = git_service.commit_and_push(
-                            git_config.local_path, rel_path,
-                            message=f'Add {project_name}')
-                        if ok2:
-                            flash(msg2, 'success')
-                        else:
-                            flash(msg2, 'danger')
+                    # Always push the initial empty placeholder so the project
+                    # appears in git immediately. The empty "services: {}" file
+                    # has no runnable services, so nothing will be deployed.
+                    rel_path = os.path.join(project_name, 'docker-compose.yml')
+                    ok2, msg2 = git_service.commit_and_push(
+                        git_config.local_path, rel_path,
+                        message=f'Add {project_name}')
+                    if ok2:
+                        flash(msg2, 'success')
+                    else:
+                        flash(msg2, 'warning')
                 else:
                     flash(msg, 'danger')
             except ValueError as e:
@@ -852,6 +854,17 @@ def git_compose():
 
         compose_dir = os.path.dirname(abs_file)
         compose_filename = os.path.basename(abs_file)
+
+        # When the app runs inside a Docker container the compose_dir is a
+        # container-internal path.  If GITOPS_HOST_PATH is set, compute the
+        # equivalent host path so that docker compose labels reflect the host
+        # filesystem (visible via `docker compose ls` on the Docker host).
+        gitops_host_path = current_app.config.get('GITOPS_HOST_PATH', '').strip()
+        if gitops_host_path:
+            rel_within_repo = os.path.relpath(compose_dir, os.path.realpath(git_config.local_path))
+            host_compose_dir = os.path.normpath(os.path.join(gitops_host_path, rel_within_repo))
+        else:
+            host_compose_dir = None
 
         if action == 'assign_server':
             raw_sid = request.form.get('server_id', '')
@@ -875,7 +888,10 @@ def git_compose():
         env['DOCKER_HOST'] = base_url
 
         if action == 'deploy':
-            command = f'docker compose -f "{compose_filename}" up -d'
+            if host_compose_dir:
+                command = f'docker compose --project-directory "{host_compose_dir}" -f "{abs_file}" up -d'
+            else:
+                command = f'docker compose -f "{compose_filename}" up -d'
             try:
                 result = subprocess.run(command, shell=True, env=env,
                                         cwd=compose_dir,
@@ -889,7 +905,10 @@ def git_compose():
                 flash(f'Deploy error: {result.stderr}', 'danger')
 
         elif action == 'stop':
-            command = f'docker compose -f "{compose_filename}" stop'
+            if host_compose_dir:
+                command = f'docker compose --project-directory "{host_compose_dir}" -f "{abs_file}" stop'
+            else:
+                command = f'docker compose -f "{compose_filename}" stop'
             try:
                 result = subprocess.run(command, shell=True, env=env,
                                         cwd=compose_dir,
