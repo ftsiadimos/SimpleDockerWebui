@@ -50,7 +50,6 @@
 
     <form method="post">
       {{ git_form.hidden_tag() }}
-      <input type="hidden" name="form_action" value="git_save">
       <div class="mb-3">
         {{ git_form.repo_url.label(class="form-label") }}
         {{ git_form.repo_url(class="form-control", value=git_config.repo_url if git_config else '') }}
@@ -77,7 +76,7 @@
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-primary" type="submit">
+        <button class="btn btn-primary" type="submit" name="form_action" value="git_save">
           <i class="fas fa-save me-1"></i>{{ 'Update' if git_config else 'Save & Clone' }}
         </button>
         {% if git_status and git_status.cloned %}

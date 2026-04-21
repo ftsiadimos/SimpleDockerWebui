@@ -109,18 +109,30 @@ def pull_repo(local_path: str, token: str | None = None,
         authed_url = _authenticated_url(repo_url, token)
         _run_git(['remote', 'set-url', 'origin', authed_url], cwd=local_path)
 
+    # Stash any unstaged / uncommitted changes so pull never blocks
+    stash_result = _run_git(['stash', '--include-untracked'], cwd=local_path)
+    stashed = stash_result.returncode == 0 and 'No local changes' not in stash_result.stdout
+
     result = _run_git(['pull', '--ff-only'], cwd=local_path)
     if result.returncode != 0:
-        # Fast-forward failed — branches diverged. Retry with rebase to
-        # replay local commits on top of the latest remote state.
+        # Fast-forward failed — branches diverged. Retry with rebase.
         result = _run_git(['pull', '--rebase'], cwd=local_path)
         if result.returncode != 0:
-            # Rebase failed (likely conflicts) — abort to leave repo clean
             _run_git(['rebase', '--abort'], cwd=local_path)
+            if stashed:
+                _run_git(['stash', 'pop'], cwd=local_path)
             err = _sanitize_output(result.stderr, token) if token else result.stderr
             return False, f"Pull failed (diverged, rebase had conflicts): {err}"
-        return True, "Repository updated (rebased local changes on top of remote)."
-    return True, "Repository updated."
+        msg = "Repository updated (rebased local changes on top of remote)."
+    else:
+        msg = "Repository updated."
+
+    if stashed:
+        pop = _run_git(['stash', 'pop'], cwd=local_path)
+        if pop.returncode != 0:
+            return True, msg + " (local stashed changes could not be re-applied cleanly — run 'git stash pop' manually)"
+
+    return True, msg
 
 
 def get_repo_status(local_path: str) -> dict:
