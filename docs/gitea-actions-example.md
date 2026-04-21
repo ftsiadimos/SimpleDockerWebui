@@ -11,6 +11,26 @@ The workflow:
 3. Pulls the latest compose files
 4. Runs `docker compose up -d` to deploy
 
+## When to Use Actions
+
+Use this Actions workflow when you want a separate CI/CD step to deploy compose files after they are pushed to the repo. This is especially useful when:
+
+- LightDockerWebUI is not running on the target Docker host
+- you need deployment to happen from a dedicated runner or remote host
+- you want a GitOps pipeline that deploys after every push
+
+If you are using LightDockerWebUI's Git Compose editor with `Auto commit & push on save` enabled, the app already pushes changes to the repo automatically when you save. In that case, Actions are only needed if you also want automatic deployment on the remote host.
+
+## When Not to Use Actions
+
+You may not need Actions if the repo and target Docker host are the same environment where LightDockerWebUI is running and you are managing deployments directly from the app. In that setup:
+
+- `Save & Push` or auto-push already commits changes to the repository
+- you can deploy directly from LightDockerWebUI without a separate actions runner
+- Actions become optional unless you want an external deployment step
+
+If you disable auto-push, use `Save & Push` manually. Actions can still be useful, but you should be aware that the workflow only triggers on git push, so manual pushes or auto-push are required to invoke it.
+
 ## Prerequisites
 
 - A Gitea instance with Actions enabled
