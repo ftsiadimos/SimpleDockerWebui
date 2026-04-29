@@ -927,6 +927,35 @@ def git_compose():
             else:
                 flash(f'Deploy error: {result.stderr}', 'danger')
 
+        elif action == 'pull_deploy':
+            if host_compose_dir:
+                pull_cmd = f'docker compose --project-directory "{host_compose_dir}" -f "{abs_file}" pull'
+                up_cmd = f'docker compose --project-directory "{host_compose_dir}" -f "{abs_file}" up -d'
+            else:
+                pull_cmd = f'docker compose -f "{compose_filename}" pull'
+                up_cmd = f'docker compose -f "{compose_filename}" up -d'
+            try:
+                result = subprocess.run(pull_cmd, shell=True, env=env,
+                                        cwd=compose_dir,
+                                        capture_output=True, text=True, timeout=120)
+            except subprocess.TimeoutExpired:
+                flash('Timeout pulling compose project.', 'danger')
+                return redirect(url_for('main.git_compose'))
+            if result.returncode != 0:
+                flash(f'Pull error: {result.stderr}', 'danger')
+                return redirect(url_for('main.git_compose'))
+            try:
+                result = subprocess.run(up_cmd, shell=True, env=env,
+                                        cwd=compose_dir,
+                                        capture_output=True, text=True, timeout=120)
+            except subprocess.TimeoutExpired:
+                flash('Timeout deploying compose project after pull.', 'danger')
+                return redirect(url_for('main.git_compose'))
+            if result.returncode == 0:
+                flash(f'Pulled and deployed {compose_path} successfully.', 'success')
+            else:
+                flash(f'Deploy after pull error: {result.stderr}', 'danger')
+
         elif action == 'stop':
             if host_compose_dir:
                 command = f'docker compose --project-directory "{host_compose_dir}" -f "{abs_file}" stop'
@@ -1014,8 +1043,16 @@ def git_compose_edit():
                                        auto_push=git_config.auto_push)
             flash(msg, 'success')
 
-            # Push if requested or auto_push enabled
+            # Pull remote updates before pushing, then push if requested or enabled
             if save_action == 'save_push' or git_config.auto_push:
+                ok, msg = git_service.pull_repo(
+                    git_config.local_path, git_config.token, git_config.repo_url)
+                if not ok:
+                    flash(msg, 'danger')
+                    return render_template('edit_compose.html',
+                                           file_path=file_path, content=content,
+                                           auto_push=git_config.auto_push)
+                flash(msg, 'success')
                 ok, msg = git_service.commit_and_push(
                     git_config.local_path, file_path,
                     repo_url=git_config.repo_url,

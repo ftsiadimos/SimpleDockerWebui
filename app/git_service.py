@@ -321,6 +321,18 @@ def commit_and_push(local_path: str, relative_path: str,
     result = _run_git(['push'], cwd=local_path)
     if result.returncode != 0:
         err = _sanitize_output(result.stderr, token)
+        stderr = result.stderr.lower()
+        if any(term in stderr for term in ['non-fast-forward', 'failed to push some refs', 'rejected', 'fetch first']):
+            pull_result = _run_git(['pull', '--rebase'], cwd=local_path)
+            if pull_result.returncode != 0:
+                _run_git(['rebase', '--abort'], cwd=local_path)
+                err2 = _sanitize_output(pull_result.stderr, token)
+                return False, f"git push failed and git pull/rebase failed: {err2}"
+            result = _run_git(['push'], cwd=local_path)
+            if result.returncode == 0:
+                return True, "Changes committed and pushed after pulling remote updates."
+            err2 = _sanitize_output(result.stderr, token)
+            return False, f"git push failed after pull/rebase: {err2}"
         return False, f"git push failed: {err}"
 
     return True, "Changes committed and pushed."
