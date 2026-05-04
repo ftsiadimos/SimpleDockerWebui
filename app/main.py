@@ -125,8 +125,16 @@ def get_dashboard_stats():
         'networks_count': 0,
         'volumes_count': 0,
         'compose_stacks_count': 0,
+        'git_compose_total': 0,
         'recent_activity': [],
     }
+
+    try:
+        git_config = GitRepoConfig.get_config()
+        if git_config and git_service.is_repo_cloned(git_config.local_path):
+            stats['git_compose_total'] = len(git_service.list_compose_files(git_config.local_path))
+    except Exception:
+        stats['git_compose_total'] = 0
 
     try:
         client, _ = conf()
@@ -238,6 +246,14 @@ def index():
     networks_count = 0
     volumes_count = 0
     compose_stacks_count = 0
+    git_compose_total = 0
+
+    git_config = GitRepoConfig.get_config()
+    try:
+        if git_config and git_service.is_repo_cloned(git_config.local_path):
+            git_compose_total = len(git_service.list_compose_files(git_config.local_path))
+    except Exception:
+        git_compose_total = 0
 
     try:
         client, serverurl = conf()
@@ -306,6 +322,7 @@ def index():
                                networks_count=networks_count,
                                volumes_count=volumes_count,
                                compose_stacks_count=compose_stacks_count,
+                               git_compose_total=git_compose_total,
                                recent_activity=recent_activity,
                                select_form=select_form)
     except ValueError as err:
@@ -320,6 +337,7 @@ def index():
                                networks_count=0,
                                volumes_count=0,
                                compose_stacks_count=0,
+                               git_compose_total=git_compose_total,
                                recent_activity=[],
                                select_form=select_form)
 

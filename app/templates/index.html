@@ -124,7 +124,15 @@
             <i class="fa-solid fa-layer-group text-info me-2 fs-4"></i>
             <span class="text-muted small fw-bold text-uppercase">Compose Stacks</span>
           </div>
-          <div class="h2 mb-0 text-info">{{ compose_stacks_count }}</div>
+          <div class="d-flex justify-content-between align-items-end">
+            <div class="h2 mb-0 text-info">{{ compose_stacks_count }}</div>
+            <div class="text-end">
+              <div class="small text-warning fw-semibold">
+                <i class="fa-solid fa-code-branch me-1"></i>Git Compose total
+              </div>
+              <div class="h5 mb-0 text-warning">{{ git_compose_total }}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
