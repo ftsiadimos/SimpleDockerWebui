@@ -132,38 +132,59 @@
               {% endif %}
             </td>
             <td class="align-middle text-end">
-              <div class="btn-group" role="group">
-                <a href="{{ url_for('main.git_compose_edit', path=project.relative_path) }}" class="btn btn-primary btn-sm" data-bs-toggle="tooltip" title="Edit compose file">
-                  <i class="fa-solid fa-edit me-1"></i>Edit
+              <div class="d-flex gap-1 justify-content-end align-items-center flex-wrap">
+                <a href="{{ url_for('main.git_compose_edit', path=project.relative_path) }}"
+                   class="btn btn-outline-secondary btn-sm"
+                   data-bs-toggle="tooltip" title="Edit compose file">
+                  <i class="fa-solid fa-pen-to-square"></i>
                 </a>
-                <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
+                <form method="post" action="{{ url_for('main.git_compose') }}">
                   <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
                   <input type="hidden" name="server_id" value="{{ project.server_id or '' }}">
-                  <button type="submit" name="action" value="deploy" class="btn btn-success btn-sm" data-loading="true" data-bs-toggle="tooltip" title="Deploy project">
-                    <i class="fa-solid fa-rocket me-1"></i>Deploy
+                  <button type="submit" name="action" value="deploy"
+                          class="btn btn-success btn-sm" data-loading="true"
+                          data-bs-toggle="tooltip" title="Deploy project">
+                    <i class="fa-solid fa-rocket"></i>
                   </button>
                 </form>
-                <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
+                <form method="post" action="{{ url_for('main.git_compose') }}">
                   <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
                   <input type="hidden" name="server_id" value="{{ project.server_id or '' }}">
-                  <button type="submit" name="action" value="pull_deploy" class="btn btn-info btn-sm text-white" data-loading="true" data-bs-toggle="tooltip" title="Pull images then deploy project">
-                    <i class="fa-solid fa-download me-1"></i>Update
+                  <button type="submit" name="action" value="pull_deploy"
+                          class="btn btn-info btn-sm text-white" data-loading="true"
+                          data-bs-toggle="tooltip" title="Pull latest images &amp; redeploy">
+                    <i class="fa-solid fa-arrows-rotate"></i>
                   </button>
                 </form>
-                <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
+                <form method="post" action="{{ url_for('main.git_compose') }}">
                   <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
                   <input type="hidden" name="server_id" value="{{ project.server_id or '' }}">
-                  <button type="submit" name="action" value="stop" class="btn btn-danger btn-sm" data-loading="true" {% if not project.running %}disabled{% endif %} data-bs-toggle="tooltip" title="Stop project">
-                    <i class="fa-solid fa-stop me-1"></i>Stop
+                  <button type="submit" name="action" value="stop"
+                          class="btn btn-warning btn-sm" data-loading="true"
+                          {% if not project.running %}disabled{% endif %}
+                          data-bs-toggle="tooltip" title="Stop project">
+                    <i class="fa-solid fa-stop"></i>
                   </button>
                 </form>
-                <form method="post" action="{{ url_for('main.git_compose') }}" class="d-inline">
-                  <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
-                  <button type="submit" name="action" value="delete" class="btn btn-danger btn-sm" data-bs-toggle="tooltip" title="Delete compose file from repo"
-                          onclick="return confirm('Delete {{ project.relative_path }}? This removes the file from the git repo.')">
-                    <i class="fa-solid fa-trash me-1"></i>Delete
+                <div class="dropdown">
+                  <button class="btn btn-outline-secondary btn-sm" type="button"
+                          data-bs-toggle="dropdown" aria-expanded="false"
+                          title="More actions">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
                   </button>
-                </form>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <form method="post" action="{{ url_for('main.git_compose') }}">
+                        <input type="hidden" name="compose_path" value="{{ project.relative_path }}">
+                        <button type="submit" name="action" value="delete"
+                                class="dropdown-item text-danger"
+                                onclick="return confirm('Delete {{ project.relative_path }}?\nThis removes the file from the git repo.')">
+                          <i class="fa-solid fa-trash me-2"></i>Delete
+                        </button>
+                      </form>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </td>
           </tr>
