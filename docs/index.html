@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LightDockerWebUI — Lightweight Docker Web Interface</title>
+  <meta name="description" content="A lightweight, elegant web interface for Docker container management. Run, monitor, and control your containers from any browser." />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    :root {
+      --docker-blue: #0db7ed;
+      --docker-dark: #0d1b2a;
+      --docker-mid: #112233;
+      --accent: #00c8ff;
+      --card-bg: #0f2030;
+    }
+
+    body {
+      background-color: var(--docker-dark);
+      color: #e0e8ef;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── HERO ─────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #0d1b2a 0%, #0a2540 60%, #003366 100%);
+      padding: 100px 0 80px;
+      border-bottom: 1px solid rgba(0, 200, 255, 0.15);
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .hero h1 span {
+      color: var(--accent);
+    }
+
+    .hero .lead {
+      font-size: 1.25rem;
+      color: #9ab;
+      max-width: 620px;
+    }
+
+    .hero-logo {
+      font-size: 5rem;
+      color: var(--docker-blue);
+      filter: drop-shadow(0 0 18px rgba(13, 183, 237, 0.5));
+    }
+
+    .badge-version {
+      background: rgba(0, 200, 255, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(0, 200, 255, 0.35);
+      font-size: 0.85rem;
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    /* ── BUTTONS ──────────────────────────────────────────── */
+    .btn-primary-custom {
+      background: linear-gradient(135deg, #0db7ed, #006bb3);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      padding: 12px 28px;
+      border-radius: 8px;
+      transition: all .25s;
+    }
+
+    .btn-primary-custom:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(13, 183, 237, 0.35);
+      color: #fff;
+    }
+
+    .btn-outline-custom {
+      border: 1px solid rgba(0, 200, 255, 0.5);
+      color: var(--accent);
+      font-weight: 600;
+      padding: 12px 28px;
+      border-radius: 8px;
+      background: transparent;
+      transition: all .25s;
+    }
+
+    .btn-outline-custom:hover {
+      background: rgba(0, 200, 255, 0.1);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    /* ── FEATURE CARDS ────────────────────────────────────── */
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 200, 255, 0.12);
+      border-radius: 12px;
+      padding: 28px;
+      height: 100%;
+      transition: border-color .25s, transform .25s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(0, 200, 255, 0.4);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      background: rgba(0, 200, 255, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .feature-card h5 {
+      color: #fff;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      color: #7a9ab0;
+      font-size: 0.92rem;
+      margin: 0;
+    }
+
+    /* ── SECTIONS ─────────────────────────────────────────── */
+    section {
+      padding: 80px 0;
+    }
+
+    section:nth-child(even) {
+      background: var(--docker-mid);
+    }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .section-subtitle {
+      color: #7a9ab0;
+      margin-bottom: 48px;
+    }
+
+    /* ── CODE / INSTALL ───────────────────────────────────── */
+    .code-block {
+      background: #050e1a;
+      border: 1px solid rgba(0, 200, 255, 0.15);
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.88rem;
+      color: #b0e0ff;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .code-block .comment { color: #4a7a90; }
+    .code-block .cmd     { color: var(--accent); }
+
+    .tab-btn {
+      background: rgba(0, 200, 255, 0.06);
+      border: 1px solid rgba(0, 200, 255, 0.2);
+      color: #7a9ab0;
+      border-radius: 6px;
+      padding: 8px 18px;
+      cursor: pointer;
+      transition: all .2s;
+      font-size: 0.9rem;
+    }
+
+    .tab-btn.active,
+    .tab-btn:hover {
+      background: rgba(0, 200, 255, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── STATS ────────────────────────────────────────────── */
+    .stat-box {
+      text-align: center;
+      padding: 32px 20px;
+    }
+
+    .stat-box .number {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat-box .label {
+      color: #7a9ab0;
+      font-size: 0.9rem;
+      margin-top: 6px;
+    }
+
+    /* ── DOCS CARDS ───────────────────────────────────────── */
+    .doc-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 200, 255, 0.12);
+      border-radius: 12px;
+      padding: 24px;
+      text-decoration: none;
+      display: block;
+      transition: all .25s;
+    }
+
+    .doc-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      text-decoration: none;
+    }
+
+    .doc-card h5 { color: #fff; font-weight: 600; }
+    .doc-card p  { color: #7a9ab0; font-size: 0.9rem; margin: 0; }
+
+    /* ── FOOTER ───────────────────────────────────────────── */
+    footer {
+      background: #050e1a;
+      border-top: 1px solid rgba(0, 200, 255, 0.1);
+      padding: 40px 0;
+      color: #4a6070;
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    /* ── NAVBAR ───────────────────────────────────────────── */
+    .navbar {
+      background: rgba(5, 14, 26, 0.95) !important;
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0, 200, 255, 0.1);
+    }
+
+    .navbar-brand { color: #fff !important; font-weight: 700; font-size: 1.1rem; }
+    .nav-link     { color: #7a9ab0 !important; transition: color .2s; }
+    .nav-link:hover { color: var(--accent) !important; }
+
+    @media (max-width: 768px) {
+      .hero { padding: 70px 0 60px; }
+      .hero h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVBAR ──────────────────────────────────────────────────── -->
+<nav class="navbar navbar-expand-lg sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="#">
+      <i class="fa-brands fa-docker me-2" style="color:var(--docker-blue)"></i>LightDockerWebUI
+    </a>
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <i class="fas fa-bars" style="color:#7a9ab0"></i>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav ms-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+        <li class="nav-item"><a class="nav-link" href="#install">Install</a></li>
+        <li class="nav-item"><a class="nav-link" href="#docs">Docs</a></li>
+        <li class="nav-item"><a class="nav-link" href="#api">API</a></li>
+        <li class="nav-item ms-2">
+          <a class="btn btn-outline-custom py-1 px-3" href="https://github.com/ftsiadimos/SimpleDockerWebui" target="_blank">
+            <i class="fab fa-github me-1"></i> GitHub
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <span class="badge-version mb-3 d-inline-block">v4.2.2</span>
+        <h1 class="mb-3">Light<span>Docker</span>WebUI</h1>
+        <p class="lead mb-4">
+          A <strong style="color:#fff">lightweight, elegant</strong> web interface for Docker container management.
+          Run, monitor, and control your containers from any browser — no complex setup required.
+        </p>
+        <div class="d-flex flex-wrap gap-3">
+          <a href="#install" class="btn btn-primary-custom">
+            <i class="fas fa-rocket me-2"></i>Get Started
+          </a>
+          <a href="https://github.com/ftsiadimos/SimpleDockerWebui" target="_blank" class="btn btn-outline-custom">
+            <i class="fab fa-github me-2"></i>View on GitHub
+          </a>
+        </div>
+        <div class="mt-4 d-flex flex-wrap gap-2">
+          <img src="https://img.shields.io/docker/pulls/ftsiadimos/lightdockerwebui?style=flat-square&logo=docker" alt="Docker Pulls" />
+          <img src="https://img.shields.io/badge/GHCR-available-blue?style=flat-square&logo=github" alt="GHCR" />
+          <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT License" />
+          <img src="https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white" alt="Python" />
+        </div>
+      </div>
+      <div class="col-lg-5 text-center">
+        <div class="hero-logo"><i class="fa-brands fa-docker"></i></div>
+        <p class="mt-3" style="color:#4a6070;font-size:0.85rem">Home servers · Dev environments · Small deployments</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ────────────────────────────────────────────────────── -->
+<div style="background:var(--docker-mid);border-bottom:1px solid rgba(0,200,255,.08)">
+  <div class="container">
+    <div class="row">
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">Multi</div><div class="label">Docker Host Support</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">Live</div><div class="label">Log Streaming</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">GitOps</div><div class="label">Compose Workflows</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">MIT</div><div class="label">Open Source License</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FEATURES ─────────────────────────────────────────────────── -->
+<section id="features">
+  <div class="container">
+    <div class="text-center">
+      <h2 class="section-title">Everything you need to manage Docker</h2>
+      <p class="section-subtitle">A full-featured dashboard without the bloat</p>
+    </div>
+    <div class="row g-4">
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-gauge-high"></i></div>
+          <h5>Real-time Dashboard</h5>
+          <p>Instant container status overview — running, stopped, paused — with port mappings and clickable links.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-play-circle"></i></div>
+          <h5>Container Control</h5>
+          <p>Start, stop, restart, and delete containers individually or in bulk with instant feedback.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-scroll"></i></div>
+          <h5>Live Log Streaming</h5>
+          <p>Real-time log output with auto-scroll, manual override, timestamp display, and search filtering.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-terminal"></i></div>
+          <h5>Web Terminal</h5>
+          <p>Full interactive shell via <code>xterm.js</code> — both SSH server terminal and container PTY shells.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-server"></i></div>
+          <h5>Multi-Server Support</h5>
+          <p>Connect to multiple Docker hosts over local socket or remote TCP. Switch servers from the dropdown.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fab fa-git-alt"></i></div>
+          <h5>GitOps for Compose</h5>
+          <p>Clone a git repo with compose files, edit, save, push, and deploy — all from the UI.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-images"></i></div>
+          <h5>Image Management</h5>
+          <p>Browse all images, prune dangling images, and see reclaimed disk space after pruning.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-network-wired"></i></div>
+          <h5>Networks &amp; Volumes</h5>
+          <p>View networks with attached containers, list volumes, and prune unused resources with space reporting.</p>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fas fa-mobile-screen"></i></div>
+          <h5>Responsive Design</h5>
+          <p>Mobile-friendly Bootstrap 5 interface that works on phones, tablets, and desktops.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── INSTALL ───────────────────────────────────────────────────── -->
+<section id="install">
+  <div class="container">
+    <div class="text-center">
+      <h2 class="section-title">Quick Install</h2>
+      <p class="section-subtitle">Up and running in seconds</p>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 justify-content-center mb-4">
+      <button class="tab-btn active" onclick="showTab('docker')">Docker</button>
+      <button class="tab-btn" onclick="showTab('compose')">Docker Compose</button>
+      <button class="tab-btn" onclick="showTab('ghcr')">GHCR</button>
+      <button class="tab-btn" onclick="showTab('source')">From Source</button>
+    </div>
+
+    <div class="row justify-content-center">
+      <div class="col-lg-9">
+
+        <div id="tab-docker" class="code-block">
+<span class="comment"># Pull from Docker Hub</span>
+<span class="cmd">docker pull ftsiadimos/lightdockerwebui:latest</span>
+
+<span class="cmd">docker run</span> -d --restart unless-stopped \
+  -p 8008:8008 \
+  --name DockerManager \
+  -v $(pwd)/instance:/app/instance \
+  ftsiadimos/lightdockerwebui:latest
+        </div>
+
+        <div id="tab-compose" class="code-block" style="display:none">
+<span class="comment"># docker-compose.yml</span>
+services:
+  DockerManager:
+    image: ftsiadimos/lightdockerwebui:latest
+    container_name: DockerManager
+    ports:
+      - "8008:8008"
+    volumes:
+      - ./instance:/app/instance
+    restart: unless-stopped
+
+<span class="comment">---</span>
+<span class="cmd">docker compose up -d</span>
+        </div>
+
+        <div id="tab-ghcr" class="code-block" style="display:none">
+<span class="comment"># Pull from GitHub Container Registry</span>
+<span class="cmd">docker pull ghcr.io/ftsiadimos/simpledockerwebui:latest</span>
+
+<span class="cmd">docker run</span> -d --restart unless-stopped \
+  -p 8008:8008 \
+  --name DockerManager \
+  -v $(pwd)/instance:/app/instance \
+  ghcr.io/ftsiadimos/simpledockerwebui:latest
+        </div>
+
+        <div id="tab-source" class="code-block" style="display:none">
+<span class="comment"># Clone &amp; run from source</span>
+<span class="cmd">git clone</span> https://github.com/ftsiadimos/SimpleDockerWebui.git
+<span class="cmd">cd</span> SimpleDockerWebui
+
+python -m venv venv
+source venv/bin/activate
+
+<span class="cmd">pip install</span> -r requirements.txt
+<span class="cmd">flask run</span> --host=0.0.0.0 --port=8008
+        </div>
+
+        <p class="text-center mt-3" style="color:#4a6070;font-size:0.9rem">
+          Then open <strong style="color:var(--accent)">http://localhost:8008</strong> in your browser.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── API ───────────────────────────────────────────────────────── -->
+<section id="api">
+  <div class="container">
+    <div class="text-center">
+      <h2 class="section-title">JSON Stats API</h2>
+      <p class="section-subtitle">Lightweight metrics endpoint for monitoring integrations</p>
+    </div>
+    <div class="row justify-content-center">
+      <div class="col-lg-9">
+        <div class="code-block">
+<span class="comment"># GET /api/stats — returns dashboard metrics</span>
+<span class="cmd">curl</span> -s http://localhost:8008/api/stats | jq .
+
+<span class="comment"># Example fields returned:</span>
+{
+  "servers_count": 2,
+  "containers_count": 14,
+  "running_count": 11,
+  "images_count": 8,
+  "total_images_size_gb": "3.42",
+  "networks_count": 5,
+  "volumes_count": 9,
+  "compose_stacks_count": 3,
+  "recent_activity": [...]
+}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── DOCS ──────────────────────────────────────────────────────── -->
+<section id="docs" style="background:var(--docker-mid)">
+  <div class="container">
+    <div class="text-center">
+      <h2 class="section-title">Documentation</h2>
+      <p class="section-subtitle">Guides to get the most out of LightDockerWebUI</p>
+    </div>
+    <div class="row g-4 justify-content-center">
+
+      <div class="col-md-6 col-lg-4">
+        <a href="git-compose-guide.md" class="doc-card">
+          <div class="feature-icon mb-3"><i class="fab fa-git-alt"></i></div>
+          <h5>Git Compose Guide</h5>
+          <p>Learn how to deploy docker-compose projects directly from a Git repository using the built-in GitOps workflow.</p>
+          <span class="mt-3 d-inline-block" style="color:var(--accent);font-size:0.85rem">Read guide →</span>
+        </a>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <a href="gitea-actions-example.md" class="doc-card">
+          <div class="feature-icon mb-3"><i class="fas fa-bolt"></i></div>
+          <h5>Gitea Actions CI/CD</h5>
+          <p>Example workflows for triggering automated deployments through Gitea Actions pipelines.</p>
+          <span class="mt-3 d-inline-block" style="color:var(--accent);font-size:0.85rem">Read guide →</span>
+        </a>
+      </div>
+
+      <div class="col-md-6 col-lg-4">
+        <a href="https://github.com/ftsiadimos/SimpleDockerWebui/blob/main/README.md" target="_blank" class="doc-card">
+          <div class="feature-icon mb-3"><i class="fas fa-book"></i></div>
+          <h5>Full README</h5>
+          <p>Complete reference documentation including all configuration options, environment variables, and advanced usage.</p>
+          <span class="mt-3 d-inline-block" style="color:var(--accent);font-size:0.85rem">Read on GitHub →</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ────────────────────────────────────────────────────── -->
+<footer>
+  <div class="container text-center">
+    <p class="mb-1">
+      <i class="fa-brands fa-docker me-1" style="color:var(--docker-blue)"></i>
+      <strong style="color:#7a9ab0">SimpleDockerWebui</strong> &nbsp;·&nbsp; v4.2.2 &nbsp;·&nbsp;
+      <a href="https://github.com/ftsiadimos/SimpleDockerWebui/blob/main/LICENSE">MIT License</a>
+    </p>
+    <p class="mb-0">
+      <a href="https://github.com/ftsiadimos/SimpleDockerWebui" target="_blank"><i class="fab fa-github me-1"></i>GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://hub.docker.com/r/ftsiadimos/lightdockerwebui" target="_blank"><i class="fab fa-docker me-1"></i>Docker Hub</a>
+    </p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function showTab(name) {
+    ['docker','compose','ghcr','source'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
+    });
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', btn.textContent.toLowerCase().replace(' ', '-') === name ||
+        (name === 'docker' && i === 0) ||
+        (name === 'compose' && i === 1) ||
+        (name === 'ghcr' && i === 2) ||
+        (name === 'source' && i === 3));
+    });
+  }
+</script>
+
+</body>
+</html>

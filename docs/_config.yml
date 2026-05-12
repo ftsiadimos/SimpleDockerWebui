@@ -1,0 +1,13 @@
+title: LightDockerWebUI
+description: A lightweight, elegant web interface for Docker container management.
+url: "https://ftsiadimos.github.io"
+baseurl: "/lightdockerwebui"
+
+# Disable Jekyll processing on static HTML (the index.html handles itself)
+include:
+  - index.html
+  - git-compose-guide.md
+  - gitea-actions-example.md
+
+plugins:
+  - jekyll-seo-tag
