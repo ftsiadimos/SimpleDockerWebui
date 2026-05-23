@@ -1,7 +1,7 @@
-# 🐳 LightDockerWebUI
+# 🐳 SimpleDockerWebui
 
 <p align="center">
-  <img src="app/static/dockermanager.png" alt="LightDockerWebUI Logo" width="120" />
+  <img src="app/static/dockermanager.png" alt="SimpleDockerWebUI Logo" width="120" />
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://hub.docker.com/r/ftsiadimos/lightdockerwebui"><img src="https://img.shields.io/docker/pulls/ftsiadimos/lightdockerwebui?style=flat-square&logo=docker" alt="Docker Pulls"></a>
   <a href="https://ghcr.io/ftsiadimos/simpledockerwebui"><img src="https://img.shields.io/badge/GHCR-available-blue?style=flat-square&logo=github" alt="GHCR Available"></a>
-  <a href="https://github.com/ftsiadimos/lightdockerwebui/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
+  <a href="https://github.com/ftsiadimos/SimpleDockerWebui/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://flask.palletsprojects.com/"><img src="https://img.shields.io/badge/Flask-3.x-000000.svg?style=flat-square&logo=flask" alt="Flask"></a>
   <a href="https://getbootstrap.com/"><img src="https://img.shields.io/badge/Bootstrap-5.3-7952B3.svg?style=flat-square&logo=bootstrap&logoColor=white" alt="Bootstrap"></a>
@@ -21,7 +21,7 @@
 
 ## 🎯 Overview
 
-LightDockerWebUI is a **clean, fast, and simple** web-based Docker management tool designed for home servers, development environments, and small deployments. No complex setup — just run and manage your containers from any browser.
+SimpleDockerWebUI is a **clean, fast, and simple** web-based Docker management tool designed for home servers, development environments, and small deployments. No complex setup — just run and manage your containers from any browser.
 
 
 
@@ -194,8 +194,8 @@ docker run --platform linux/arm64 -d --restart unless-stopped -p 8008:8008 -v $(
 
 ```bash
 # Clone repository
-git clone https://github.com/ftsiadimos/lightdockerwebui.git
-cd lightdockerwebui
+git clone https://github.com/ftsiadimos/SimpleDockerWebui.git
+cd SimpleDockerWebui
 
 # Create virtual environment
 python -m venv venv
@@ -216,7 +216,7 @@ flask run --host=0.0.0.0 --port=8008
 
 ### Connecting to Docker Hosts
 
-LightDockerWebUI supports **multiple Docker servers**. Configure them through the web UI:
+SimpleDockerWebUI supports **multiple Docker servers**. Configure them through the web UI:
 
 1. Click **Config** in the navigation bar
 2. Add servers with a display name and connection details:
@@ -238,7 +238,7 @@ LightDockerWebUI supports **multiple Docker servers**. Configure them through th
 | \`SQLALCHEMY_DATABASE_URI\` | \`sqlite:///serverinfo.db\` | Database connection string |
 ## 🛰️ API: `/api/stats`
 
-LightDockerWebUI now exposes a lightweight JSON API for dashboard metrics.
+SimpleDockerWebUI now exposes a lightweight JSON API for dashboard metrics.
 
 - `GET /api/stats` returns a JSON object with:
   - `servers_count`
@@ -305,7 +305,7 @@ sudo systemctl restart docker
 
 ## 🔀 GitOps for Compose
 
-LightDockerWebUI can manage docker-compose projects from a **git repository** (Gitea, GitHub, etc.), giving you a full GitOps workflow:
+SimpleDockerWebUI can manage docker-compose projects from a **git repository** (Gitea, GitHub, etc.), giving you a full GitOps workflow:
 
 ### Setup
 
@@ -338,7 +338,7 @@ For automatic deployment on push, see the [Gitea Actions example](docs/gitea-act
 ## 🏗️ Project Structure
 
 ```
-lightdockerwebui/
+SimpleDockerWebui/
 ├── app/
 │   ├── __init__.py          # Flask application factory
 │   ├── main.py              # Routes, WebSocket handlers
@@ -361,8 +361,8 @@ lightdockerwebui/
 
 ```bash
 # Clone and setup
-git clone https://github.com/ftsiadimos/lightdockerwebui.git
-cd lightdockerwebui
+git clone https://github.com/ftsiadimos/SimpleDockerWebui.git
+cd SimpleDockerWebui
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
@@ -416,8 +416,8 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 ## 💬 Support & Links
 
 <p align="center">
-  <a href="https://github.com/ftsiadimos/lightdockerwebui/issues">🐛 Report Bug</a> •
-  <a href="https://github.com/ftsiadimos/lightdockerwebui/discussions">💡 Request Feature</a> •
+  <a href="https://github.com/ftsiadimos/SimpleDockerWebui/issues">🐛 Report Bug</a> •
+  <a href="https://github.com/ftsiadimos/SimpleDockerWebui/discussions">💡 Request Feature</a> •
   <a href="https://hub.docker.com/r/ftsiadimos/lightdockerwebui">🐳 Docker Hub</a>
 </p>
 
