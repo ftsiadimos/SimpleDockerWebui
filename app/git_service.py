@@ -8,6 +8,7 @@ import logging
 import os
 import re
 import subprocess
+from typing import List, Optional, Tuple
 from urllib.parse import urlparse, urlunparse
 
 import yaml
@@ -41,7 +42,7 @@ def _safe_path(local_path: str, relative_path: str) -> str:
     return target
 
 
-def _run_git(args: list[str], cwd: str | None = None,
+def _run_git(args: List[str], cwd: Optional[str] = None,
              timeout: int = 120) -> subprocess.CompletedProcess:
     """Run a git command and return the CompletedProcess.
 
@@ -71,7 +72,7 @@ def is_repo_cloned(local_path: str) -> bool:
 
 
 def clone_repo(repo_url: str, token: str, branch: str,
-               local_path: str) -> tuple[bool, str]:
+               local_path: str) -> Tuple[bool, str]:
     """Clone a repository.  Returns ``(success, message)``."""
     if is_repo_cloned(local_path):
         return False, "Repository already cloned. Use pull to update."
@@ -95,8 +96,8 @@ def clone_repo(repo_url: str, token: str, branch: str,
     return True, "Repository cloned successfully."
 
 
-def pull_repo(local_path: str, token: str | None = None,
-              repo_url: str | None = None) -> tuple[bool, str]:
+def pull_repo(local_path: str, token: Optional[str] = None,
+              repo_url: Optional[str] = None) -> Tuple[bool, str]:
     """Pull latest changes.  Returns ``(success, message)``.
 
     If *token* and *repo_url* are supplied the remote URL is refreshed first
@@ -156,7 +157,7 @@ def get_repo_status(local_path: str) -> dict:
 # Compose file operations
 # ------------------------------------------------------------------
 
-def list_compose_files(local_path: str) -> list[dict]:
+def list_compose_files(local_path: str) -> List[dict]:
     """Walk the cloned repo and return compose project metadata.
 
     Returns a list of dicts: ``{project, filename, relative_dir, relative_path}``.
@@ -164,7 +165,7 @@ def list_compose_files(local_path: str) -> list[dict]:
     if not is_repo_cloned(local_path):
         return []
 
-    projects: list[dict] = []
+    projects: List[dict] = []
     base = os.path.realpath(local_path)
 
     for dirpath, dirnames, filenames in os.walk(base):
@@ -199,7 +200,7 @@ def read_compose_file(local_path: str, relative_path: str) -> str:
         return f.read()
 
 
-def validate_yaml(content: str) -> tuple[bool, str]:
+def validate_yaml(content: str) -> Tuple[bool, str]:
     """Validate that *content* is valid YAML.  Returns ``(valid, error_msg)``."""
     try:
         yaml.safe_load(content)
@@ -209,7 +210,7 @@ def validate_yaml(content: str) -> tuple[bool, str]:
 
 
 def save_compose_file(local_path: str, relative_path: str,
-                      content: str) -> tuple[bool, str]:
+                      content: str) -> Tuple[bool, str]:
     """Write *content* to a compose file after YAML validation.
 
     Returns ``(success, message)``.
@@ -227,7 +228,7 @@ def save_compose_file(local_path: str, relative_path: str,
     return True, "File saved."
 
 
-def create_compose_project(local_path: str, project_name: str) -> tuple[bool, str]:
+def create_compose_project(local_path: str, project_name: str) -> Tuple[bool, str]:
     """Create a new compose project directory with a template docker-compose.yml.
 
     Returns ``(success, message)``.
@@ -257,7 +258,7 @@ def create_compose_project(local_path: str, project_name: str) -> tuple[bool, st
     return True, f"Created project '{project_name}'. Edit the compose file and save to deploy."
 
 
-def delete_compose_project(local_path: str, relative_path: str) -> tuple[bool, str]:
+def delete_compose_project(local_path: str, relative_path: str) -> Tuple[bool, str]:
     """Delete a compose file (and its directory if empty afterwards).
 
     Returns ``(success, message)``.
@@ -287,9 +288,9 @@ def _set_remote_auth_url(local_path: str, repo_url: str, token: str) -> None:
 
 
 def commit_and_push(local_path: str, relative_path: str,
-                    message: str | None = None,
-                    repo_url: str | None = None,
-                    token: str | None = None) -> tuple[bool, str]:
+                    message: Optional[str] = None,
+                    repo_url: Optional[str] = None,
+                    token: Optional[str] = None) -> Tuple[bool, str]:
     """Stage, commit, and push changes for a compose file.
 
     Returns ``(success, message)``.
@@ -338,7 +339,7 @@ def commit_and_push(local_path: str, relative_path: str,
     return True, "Changes committed and pushed."
 
 
-def _sanitize_output(text: str, token: str | None) -> str:
+def _sanitize_output(text: str, token: Optional[str]) -> str:
     """Remove token from output text to prevent leaking credentials."""
     if token and token in text:
         text = text.replace(token, '***')

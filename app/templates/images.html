@@ -36,7 +36,7 @@
     <h5 class="mb-0"><i class="fa-solid fa-boxes-stacked text-muted me-2"></i>Images</h5>
     <form method="post">
       <input type="hidden" name="action" value="prune">
-      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Prune unused images? This will remove dangling images.')">
+      <button type="submit" class="btn btn-danger btn-sm" data-loading>
         <i class="fa-solid fa-broom me-1"></i>Clean unused images
       </button>
     </form>

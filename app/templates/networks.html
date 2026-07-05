@@ -36,7 +36,7 @@
     <h5 class="mb-0"><i class="fa-solid fa-network-wired text-muted me-2"></i>Networks</h5>
     <form method="post">
       <input type="hidden" name="action" value="prune">
-      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Prune unused networks? This will remove networks not used by any container.')">
+      <button type="submit" class="btn btn-danger btn-sm" data-loading>
         <i class="fa-solid fa-broom me-1"></i>Clean unused networks
       </button>
     </form>
