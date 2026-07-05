@@ -1118,17 +1118,40 @@ def images():
         client, serverurl = conf()
         images = client.images.list()
         images_count = len(images)
+        
+        # Get all containers to determine which images are in use
         try:
-            prunable_images_raw = client.images.list(filters={'dangling': True})
+            containers = client.containers.list(all=True)
+            used_image_ids = {c.image.id for c in containers if hasattr(c, 'image')}
+        except Exception:
+            used_image_ids = set()
+        
+        try:
+            # For aggressive pruning display: show all unused images (dangling + unused tagged)
+            prunable_images_raw = client.api.images(filters={'dangling': False})
+            if prunable_images_raw:
+                # Filter to only unused images (not used by any container)
+                prunable_images_raw = [img for img in prunable_images_raw 
+                                      if img.get('Id', '') not in used_image_ids]
             dangling_count = len(prunable_images_raw)
         except Exception:
-            # fallback: count images with no repo tags
-            prunable_images_raw = [i for i in images if not getattr(i, 'tags', None)]
-            dangling_count = len(prunable_images_raw)
+            # fallback: use simple dangling filter
+            try:
+                prunable_images_raw = client.images.list(filters={'dangling': True})
+                dangling_count = len(prunable_images_raw)
+            except Exception:
+                prunable_images_raw = [i for i in images if not getattr(i, 'tags', None)]
+                dangling_count = len(prunable_images_raw)
 
         # build image list for display (short id, tags, size, prunable)
         images_list = []
-        prunable_ids = {getattr(i, 'id', '') for i in prunable_images_raw}
+        if isinstance(prunable_images_raw, list) and prunable_images_raw and isinstance(prunable_images_raw[0], dict):
+            # API response format (list of dicts)
+            prunable_ids = {img.get('Id', '')[:12] for img in prunable_images_raw}
+        else:
+            # Image objects format
+            prunable_ids = {getattr(i, 'id', '')[:12] for i in prunable_images_raw if getattr(i, 'id', '')}
+        
         for i in images:
             iid = (getattr(i, 'id', '') or '')[:12]
             tags = ', '.join(getattr(i, 'tags', []) or ['<none>:<none>'])
@@ -1141,7 +1164,7 @@ def images():
                 'id': iid,
                 'tags': tags,
                 'size': _human_size(size_bytes),
-                'prunable': (getattr(i, 'id', '') in prunable_ids)
+                'prunable': (iid in prunable_ids or getattr(i, 'id', '') not in used_image_ids)
             })
 
         # prepare short list of prunable images for preview
@@ -1154,13 +1177,37 @@ def images():
 
         if request.method == 'POST' and request.form.get('action') == 'prune':
             try:
-                result = client.images.prune()
+                # Use aggressive prune to remove all unused images (dangling + unused tagged images)
+                result = client.api.prune_images(filters={'dangling': False})
                 reclaimed = result.get('SpaceReclaimed', 0)
                 deleted = result.get('ImagesDeleted') or []
                 num_deleted = len(deleted) if isinstance(deleted, list) else 1
                 flash(f'Pruned {num_deleted} images — reclaimed {reclaimed // (1024**2)} MB', 'success')
             except Exception as exc:
                 flash(f'Error pruning images: {exc}', 'danger')
+            return redirect(url_for('main.images'))
+
+        if request.method == 'POST' and request.form.get('action') == 'bulk_delete':
+            try:
+                image_ids = request.form.getlist('image_ids')
+                if not image_ids:
+                    flash('No images selected', 'warning')
+                else:
+                    deleted_count = 0
+                    errors = []
+                    for img_id in image_ids:
+                        try:
+                            client.images.remove(img_id, force=True)
+                            deleted_count += 1
+                        except Exception as e:
+                            errors.append(f"{img_id[:12]}: {str(e)}")
+                    
+                    if errors:
+                        flash(f'Deleted {deleted_count} images. Errors: ' + '; '.join(errors), 'warning')
+                    else:
+                        flash(f'Deleted {deleted_count} image(s)', 'success')
+            except Exception as exc:
+                flash(f'Error deleting images: {exc}', 'danger')
             return redirect(url_for('main.images'))
 
         return render_template('images.html', images_count=images_count, dangling_count=dangling_count, images_list=images_list, prunable_preview=prunable_preview, select_form=select_form)
@@ -1185,16 +1232,14 @@ def volumes():
         client, serverurl = conf()
         volumes = client.volumes.list() or []
         volumes_count = len(volumes)
-        try:
-            prunable = client.volumes.list(filters={'dangling': True})
-            dangling_count = len(prunable)
-        except Exception:
-            prunable = []
-            dangling_count = 0
+        
+        # Docker's prune() only removes unused volumes. We don't pre-mark volumes as prunable
+        # since detection is complex (volumes used by stopped services, etc). Let Docker decide
+        # what's safe to remove.
+        dangling_count = 0
 
-        # build volumes list for display and a preview of prunable volumes
+        # build volumes list for display
         volumes_list = []
-        prunable_names = {v.name for v in prunable}
         for v in volumes:
             name = getattr(v, 'name', '')
             mountpoint = (v.attrs.get('Mountpoint') if getattr(v, 'attrs', None) else '') or ''
@@ -1203,18 +1248,43 @@ def volumes():
                 'name': name,
                 'driver': driver,
                 'mountpoint': mountpoint,
-                'prunable': (name in prunable_names)
+                'prunable': False  # Don't pre-mark; Docker prune handles this
             })
-        prunable_preview = [ {'name': v.name} for v in prunable[:5] ]
+        prunable_preview = []
 
         if request.method == 'POST' and request.form.get('action') == 'prune':
             try:
+                # Prune all unused volumes
                 result = client.volumes.prune()
                 deleted = result.get('VolumesDeleted') or []
                 num_deleted = len(deleted)
                 flash(f'Pruned {num_deleted} volumes', 'success')
             except Exception as exc:
                 flash(f'Error pruning volumes: {exc}', 'danger')
+            return redirect(url_for('main.volumes'))
+
+        if request.method == 'POST' and request.form.get('action') == 'bulk_delete':
+            try:
+                volume_names = request.form.getlist('volume_names')
+                if not volume_names:
+                    flash('No volumes selected', 'warning')
+                else:
+                    deleted_count = 0
+                    errors = []
+                    for vol_name in volume_names:
+                        try:
+                            vol = client.volumes.get(vol_name)
+                            vol.remove(force=True)
+                            deleted_count += 1
+                        except Exception as e:
+                            errors.append(f"{vol_name}: {str(e)}")
+                    
+                    if errors:
+                        flash(f'Deleted {deleted_count} volumes. Errors: ' + '; '.join(errors), 'warning')
+                    else:
+                        flash(f'Deleted {deleted_count} volume(s)', 'success')
+            except Exception as exc:
+                flash(f'Error deleting volumes: {exc}', 'danger')
             return redirect(url_for('main.volumes'))
 
         return render_template('volumes.html', volumes_count=volumes_count, dangling_count=dangling_count, volumes_list=volumes_list, prunable_preview=prunable_preview, select_form=select_form)
@@ -1268,21 +1338,45 @@ def networks():
             else:
                 attached = container_network_counts.get(name, 0)
 
-            prunable = (attached == 0 and name not in builtin)
-            networks_list.append({'name': name, 'driver': driver, 'attached': attached, 'prunable': prunable})
-            if prunable:
-                prunable_networks.append({'name': name})
-        prunable_count = len(prunable_networks)
-        prunable_preview = prunable_networks[:5]
+            # Don't pre-mark as prunable; let Docker's prune API decide what's safe
+            networks_list.append({'name': name, 'driver': driver, 'attached': attached, 'prunable': False})
+        
+        prunable_count = 0
+        prunable_preview = []
 
         if request.method == 'POST' and request.form.get('action') == 'prune':
             try:
+                # Prune all unused networks
                 result = client.networks.prune()
                 deleted = result.get('NetworksDeleted') or []
                 num_deleted = len(deleted)
                 flash(f'Pruned {num_deleted} networks', 'success')
             except Exception as exc:
                 flash(f'Error pruning networks: {exc}', 'danger')
+            return redirect(url_for('main.networks'))
+
+        if request.method == 'POST' and request.form.get('action') == 'bulk_delete':
+            try:
+                network_names = request.form.getlist('network_names')
+                if not network_names:
+                    flash('No networks selected', 'warning')
+                else:
+                    deleted_count = 0
+                    errors = []
+                    for net_name in network_names:
+                        try:
+                            net = client.networks.get(net_name)
+                            net.remove()
+                            deleted_count += 1
+                        except Exception as e:
+                            errors.append(f"{net_name}: {str(e)}")
+                    
+                    if errors:
+                        flash(f'Deleted {deleted_count} networks. Errors: ' + '; '.join(errors), 'warning')
+                    else:
+                        flash(f'Deleted {deleted_count} network(s)', 'success')
+            except Exception as exc:
+                flash(f'Error deleting networks: {exc}', 'danger')
             return redirect(url_for('main.networks'))
 
         return render_template('networks.html', networks_count=networks_count, prunable_count=prunable_count, networks_list=networks_list, prunable_preview=prunable_preview, select_form=select_form)
