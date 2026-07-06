@@ -103,9 +103,9 @@ SimpleDockerWebUI is a **clean, fast, and simple** web-based Docker management t
 <td width="50%">
 
 ### 🧹 Resource Management
-- **Images**: Browse all images, prune dangling
-- **Volumes**: List and prune unused volumes
-- **Networks**: View attached containers, prune empty
+- **Images**: Browse all images, prune dangling images, **delete individual images manually**
+- **Volumes**: List all volumes, prune unused volumes, **delete individual volumes manually**
+- **Networks**: View all networks with attached containers, prune empty networks, **delete individual networks manually**
 - Reclaimed space reporting after prune
 
 </td>
