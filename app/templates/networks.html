@@ -63,6 +63,7 @@
                 <th>NAME</th>
                 <th>DRIVER</th>
                 <th>ATTACHED CONTAINERS</th>
+                <th style="width: 90px;">PRUNABLE</th>
               </tr>
             </thead>
             <tbody class="small">
@@ -74,6 +75,13 @@
                 <td>{{ n.name }}</td>
                 <td>{{ n.driver }}</td>
                 <td>{{ n.attached }}</td>
+                <td>
+                  {% if n.prunable %}
+                  <span class="badge bg-warning text-dark"><i class="fa-solid fa-broom me-1"></i>Yes</span>
+                  {% else %}
+                  <span class="badge bg-secondary">No</span>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>

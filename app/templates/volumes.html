@@ -63,6 +63,7 @@
                 <th>NAME</th>
                 <th>DRIVER</th>
                 <th>MOUNTPOINT</th>
+                <th style="width: 90px;">PRUNABLE</th>
               </tr>
             </thead>
             <tbody class="small">
@@ -74,6 +75,13 @@
                 <td>{{ v.name }}</td>
                 <td>{{ v.driver }}</td>
                 <td class="text-truncate" style="max-width:240px">{{ v.mountpoint }}</td>
+                <td>
+                  {% if v.prunable %}
+                  <span class="badge bg-warning text-dark"><i class="fa-solid fa-broom me-1"></i>Yes</span>
+                  {% else %}
+                  <span class="badge bg-secondary">No</span>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>

@@ -1133,15 +1133,12 @@ def images():
                 # Filter to only unused images (not used by any container)
                 prunable_images_raw = [img for img in prunable_images_raw 
                                       if img.get('Id', '') not in used_image_ids]
-            dangling_count = len(prunable_images_raw)
         except Exception:
             # fallback: use simple dangling filter
             try:
                 prunable_images_raw = client.images.list(filters={'dangling': True})
-                dangling_count = len(prunable_images_raw)
             except Exception:
                 prunable_images_raw = [i for i in images if not getattr(i, 'tags', None)]
-                dangling_count = len(prunable_images_raw)
 
         # build image list for display (short id, tags, size, prunable)
         images_list = []
@@ -1154,18 +1151,23 @@ def images():
         
         for i in images:
             iid = (getattr(i, 'id', '') or '')[:12]
+            full_id = getattr(i, 'id', '')
             tags = ', '.join(getattr(i, 'tags', []) or ['<none>:<none>'])
             size_bytes = 0
             try:
                 size_bytes = int(i.attrs.get('Size', 0)) if getattr(i, 'attrs', None) else 0
             except Exception:
                 size_bytes = 0
+            is_prunable = iid in prunable_ids or full_id not in used_image_ids
             images_list.append({
                 'id': iid,
                 'tags': tags,
                 'size': _human_size(size_bytes),
-                'prunable': (iid in prunable_ids or getattr(i, 'id', '') not in used_image_ids)
+                'prunable': is_prunable
             })
+        
+        # Count prunable images from the actual list
+        dangling_count = sum(1 for img in images_list if img['prunable'])
 
         # prepare short list of prunable images for preview
         prunable_preview = []
@@ -1233,10 +1235,17 @@ def volumes():
         volumes = client.volumes.list() or []
         volumes_count = len(volumes)
         
-        # Docker's prune() only removes unused volumes. We don't pre-mark volumes as prunable
-        # since detection is complex (volumes used by stopped services, etc). Let Docker decide
-        # what's safe to remove.
-        dangling_count = 0
+        # Get all containers to determine which volumes are in use
+        try:
+            containers = client.containers.list(all=True)
+            volume_mounts = set()
+            for c in containers:
+                mounts = getattr(c, 'attrs', {}).get('Mounts', []) or []
+                for mount in mounts:
+                    if mount.get('Type') == 'volume' and mount.get('Name'):
+                        volume_mounts.add(mount.get('Name'))
+        except Exception:
+            volume_mounts = set()
 
         # build volumes list for display
         volumes_list = []
@@ -1244,12 +1253,16 @@ def volumes():
             name = getattr(v, 'name', '')
             mountpoint = (v.attrs.get('Mountpoint') if getattr(v, 'attrs', None) else '') or ''
             driver = (v.attrs.get('Driver') if getattr(v, 'attrs', None) else '') or ''
+            is_prunable = name not in volume_mounts
             volumes_list.append({
                 'name': name,
                 'driver': driver,
                 'mountpoint': mountpoint,
-                'prunable': False  # Don't pre-mark; Docker prune handles this
+                'prunable': is_prunable
             })
+        
+        # Count prunable volumes
+        dangling_count = sum(1 for v in volumes_list if v['prunable'])
         prunable_preview = []
 
         if request.method == 'POST' and request.form.get('action') == 'prune':
@@ -1338,10 +1351,11 @@ def networks():
             else:
                 attached = container_network_counts.get(name, 0)
 
-            # Don't pre-mark as prunable; let Docker's prune API decide what's safe
-            networks_list.append({'name': name, 'driver': driver, 'attached': attached, 'prunable': False})
+            # Mark as prunable if: no containers attached, not built-in, and not user defined
+            is_prunable = attached == 0 and name not in builtin
+            networks_list.append({'name': name, 'driver': driver, 'attached': attached, 'prunable': is_prunable})
         
-        prunable_count = 0
+        prunable_count = sum(1 for n in networks_list if n['prunable'])
         prunable_preview = []
 
         if request.method == 'POST' and request.form.get('action') == 'prune':
