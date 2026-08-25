@@ -130,6 +130,16 @@
               <span id="pageTitle" class="navbar-page-title h6 mb-0">{% block page_title %}{% endblock %}</span>
             </div>
             <div class="ms-auto d-flex align-items-center">
+              <!-- Server selector -->
+              {% if select_form and select_form.server.choices %}
+              <form action="{{ request.url }}" method="post" class="d-flex align-items-center me-3">
+                {{ select_form.hidden_tag() }}
+                <div class="input-group input-group-sm">
+                  <label class="input-group-text" for="server-select-top"><i class="fa-solid fa-server"></i></label>
+                  {{ select_form.server(class="form-select form-select-sm", id="server-select-top", onchange="this.form.submit()") }}
+                </div>
+              </form>
+              {% endif %}
               {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                   {% for category, message in messages %}

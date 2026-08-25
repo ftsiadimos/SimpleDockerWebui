@@ -3,18 +3,6 @@
 
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <form action="{{ url_for('main.index') }}" method="post" class="d-flex align-items-center gap-2">
-    {{ select_form.hidden_tag() }}
-    {% if select_form.server.choices %}
-      <div class="input-group">
-        <label class="input-group-text" for="server-select"><i class="fa-solid fa-server"></i></label>
-        {{ select_form.server(class="form-select", id="server-select", onchange="this.form.submit()") }}
-      </div>
-    {% endif %}
-  </form>
-</div>
-
 <div class="row content-cards g-4 mb-4">
   <div class="col-6 col-md-3">
     <div class="card shadow-sm border-0 h-100">

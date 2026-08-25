@@ -44,6 +44,50 @@ def init_sock(app):
     sock.init_app(app)
 
 
+@main_bp.before_request
+def handle_server_selection():
+    """Handle server selection from the topbar dropdown on any page."""
+    if request.method != 'POST':
+        return
+    # Only handle the global server selector (has 'server' field, not form-specific buttons)
+    if 'server' not in request.form:
+        return
+    # Skip routes that handle their own server selection or other POST actions
+    skip_routes = {'main.addcon', 'main.logs', 'main.comma', 'main.api_stats'}
+    if request.endpoint in skip_routes:
+        return
+    # Skip if the route already handles server selection (has explicit logic)
+    # We handle it here for all other routes
+
+    server_id = None
+    form = SelectServerForm()
+    servers = DockerServer.query.all()
+    form.server.choices = [(s.id, s.display_name) for s in servers]
+
+    if form.validate_on_submit():
+        server_id = form.server.data
+    else:
+        raw = request.form.get('server')
+        try:
+            server_id = int(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            server_id = None
+        log.warning("Server select did not validate; fallback parsing server=%r -> %r", raw, server_id)
+
+    if server_id is None:
+        return None
+
+    server = DockerServer.query.get(server_id)
+    if server:
+        DockerServer.set_active(server_id)
+        _docker_client_cache.clear()
+        flash(f'Connected to "{server.display_name}".', 'success')
+        # Redirect back to the current page (without POST data)
+        return redirect(request.referrer or url_for('main.index'))
+
+    return None
+
+
 def _human_size(bytes_num: int) -> str:
     """Return human-readable size string from bytes (KB/MB/GB).
 

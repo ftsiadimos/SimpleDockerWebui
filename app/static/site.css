@@ -210,6 +210,9 @@ body { min-height: 100vh; background-color: #f4f6f9; }
 .theme-terminal-dark .navbar.bg-light .form-select, .theme-terminal-dark .navbar.bg-light .form-control { background:#040404 !important; color:#dfffd8 !important; border: 1px solid #333 !important; }
 .theme-terminal-dark .navbar.bg-light .alert { background: transparent !important; border: 1px solid rgba(255,255,255,0.03) !important; color: #dfffd8 !important; }
 .theme-terminal-dark .navbar.bg-light .btn-outline-secondary { color: #cfcfcf !important; border-color: rgba(255,255,255,0.03) !important; }
+.theme-terminal-dark .navbar.bg-light .input-group-text .fa-solid,
+.theme-terminal-dark .navbar.bg-light .input-group-text .fa-brands { color: rgba(180,255,180,0.5) !important; }
+.theme-terminal-dark .navbar.bg-light .input-group-text { background: transparent !important; border-color: rgba(214, 11, 11, 0.03) !important; }
 .theme-terminal-dark .btn-close { filter: invert(1) grayscale(1) contrast(2) !important; }
 .theme-terminal-dark .toast, .theme-terminal-dark .alert { color: #dfffd8 !important; }
 

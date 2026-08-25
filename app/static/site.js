@@ -35,7 +35,9 @@ document.addEventListener('DOMContentLoaded', function(){
         toast.setAttribute('aria-atomic','true');
         var body = document.createElement('div');
         body.className = 'd-flex';
-        body.innerHTML = '<div class="toast-body">' + alert.innerHTML + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>';
+        // Clone the alert content but strip the close button to avoid double X
+        var content = alert.innerHTML.replace(/<button[^>]*btn-close[^>]*>.*?<\/button>/gi, '').trim();
+        body.innerHTML = '<div class="toast-body">' + content + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>';
         toast.appendChild(body);
         toastContainer.appendChild(toast);
         var btoast = new bootstrap.Toast(toast, { delay: 4500 });
