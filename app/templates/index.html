@@ -199,9 +199,37 @@
           <i class="fa-brands fa-docker me-2"></i>
           <span>Manage Containers</span>
         </a>
-        <a href="{{ url_for('main.addcon') }}" class="btn btn-outline-secondary d-flex align-items-center">
-          <i class="fa-solid fa-server me-2"></i>
-          <span>Manage Servers</span>
+        <a href="{{ url_for('main.images') }}" class="btn btn-outline-warning d-flex align-items-center">
+          <i class="fa-solid fa-boxes-stacked me-2"></i>
+          <span>Manage Images</span>
+        </a>
+        <a href="{{ url_for('main.volumes') }}" class="btn btn-outline-danger d-flex align-items-center">
+          <i class="fa-solid fa-database me-2"></i>
+          <span>Manage Volumes</span>
+        </a>
+        <a href="{{ url_for('main.networks') }}" class="btn btn-outline-success d-flex align-items-center">
+          <i class="fa-solid fa-network-wired me-2"></i>
+          <span>Manage Networks</span>
+        </a>
+        <a href="{{ url_for('main.git_compose') }}" class="btn btn-outline-info d-flex align-items-center">
+          <i class="fa-solid fa-code-branch me-2"></i>
+          <span>Git Compose</span>
+        </a>
+        <a href="{{ url_for('main.terminal') }}" class="btn btn-outline-dark d-flex align-items-center">
+          <i class="fa-solid fa-terminal me-2"></i>
+          <span>Terminal</span>
+        </a>
+        <a href="{{ url_for('main.settings') }}" class="btn btn-outline-secondary d-flex align-items-center">
+          <i class="fa-solid fa-sliders-h me-2"></i>
+          <span>Settings</span>
+        </a>
+        <a href="{{ url_for('main.about') }}" class="btn btn-outline-info d-flex align-items-center">
+          <i class="fa-solid fa-info-circle me-2"></i>
+          <span>About</span>
+        </a>
+        <a href="{{ url_for('main.docs') }}" class="btn btn-outline-primary d-flex align-items-center">
+          <i class="fa-solid fa-book me-2"></i>
+          <span>Docs</span>
         </a>
       </div>
     </div>
