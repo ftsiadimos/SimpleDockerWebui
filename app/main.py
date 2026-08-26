@@ -31,7 +31,7 @@ def _read_version() -> str:
 log = logging.getLogger(__name__)
 
 from app import db  # Only import db, not app, to avoid circular import
-from app.models import DockerServer, GitRepoConfig, ProjectServerMapping
+from app.models import DockerServer, GitRepoConfig, ProjectServerMapping, ContainerActivity
 from app.forms import AddServerForm, SelectServerForm, GitRepoForm
 from app import git_service
 
@@ -211,17 +211,19 @@ def get_dashboard_stats():
                 compose_projects.add(proj)
         stats['compose_stacks_count'] = len(compose_projects)
 
+        # Fetch recent container activity from database
         recent_activity = []
-        for c in raw_containers[-8:]:
-            try:
-                img = c.attrs.get('Config', {}).get('Image', '') if getattr(c, 'attrs', None) else ''
-            except Exception:
-                img = ''
-            recent_activity.append({
-                'name': getattr(c, 'name', '') or '',
-                'status': getattr(c, 'status', '') or '',
-                'image': img,
-            })
+        try:
+            activities = ContainerActivity.get_recent(limit=10)
+            for a in activities:
+                recent_activity.append({
+                    'name': a.container_name,
+                    'action': a.action,
+                    'image': a.image or '',
+                    'timestamp': a.timestamp,
+                })
+        except Exception:
+            pass
 
         stats['recent_activity'] = recent_activity
 
@@ -344,17 +346,19 @@ def index():
         except Exception:
             compose_stacks_count = 0
 
+        # Fetch recent container activity from database
         recent_activity = []
-        for c in raw_containers[-8:]:
-            try:
-                img = c.attrs.get('Config', {}).get('Image', '') if getattr(c, 'attrs', None) else ''
-            except Exception:
-                img = ''
-            recent_activity.append({
-                'name': getattr(c, 'name', '') or '',
-                'status': getattr(c, 'status', '') or '',
-                'image': img,
-            })
+        try:
+            activities = ContainerActivity.get_recent(limit=10)
+            for a in activities:
+                recent_activity.append({
+                    'name': a.container_name,
+                    'action': a.action,
+                    'image': a.image or '',
+                    'timestamp': a.timestamp,
+                })
+        except Exception:
+            pass
 
         return render_template('index.html',
                                servers_count=servers_count,
@@ -784,6 +788,19 @@ def compose():
             
             if result.returncode == 0:
                 flash(f'Compose in {compose_dir} started successfully.', 'success')
+                # Log compose start activity
+                try:
+                    activity = ContainerActivity(
+                        container_id='compose',
+                        container_name=os.path.basename(compose_dir.rstrip('/')),
+                        action='started',
+                        image='docker-compose',
+                    )
+                    db.session.add(activity)
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    log.exception("Failed to log compose activity")
             else:
                 flash(f'Error starting compose in {compose_dir}: {result.stderr}', 'danger')
                 
@@ -813,6 +830,19 @@ def compose():
             
             if result.returncode == 0:
                 flash(f'Compose in {compose_dir} stopped successfully.', 'success')
+                # Log compose stop activity
+                try:
+                    activity = ContainerActivity(
+                        container_id='compose',
+                        container_name=os.path.basename(compose_dir.rstrip('/')),
+                        action='stopped',
+                        image='docker-compose',
+                    )
+                    db.session.add(activity)
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    log.exception("Failed to log compose activity")
             else:
                 flash(f'Error stopping compose in {compose_dir}: {result.stderr}', 'danger')
         
@@ -2208,6 +2238,21 @@ def submit_remove():
                 container = client.containers.get(cid)
                 handler(container)
                 success_count += 1
+                # Log activity for start/stop/restart actions
+                if action in ("Start", "Stop", "Restart"):
+                    try:
+                        image = container.attrs.get('Config', {}).get('Image', '') if getattr(container, 'attrs', None) else ''
+                        activity = ContainerActivity(
+                            container_id=cid[:12],
+                            container_name=getattr(container, 'name', '') or '',
+                            action=past_tense,
+                            image=image,
+                        )
+                        db.session.add(activity)
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+                        log.exception("Failed to log container activity for %s", cid)
             except docker.errors.NotFound:
                 errors.append(f"Container {cid[:12]} not found")
             except docker.errors.APIError as e:

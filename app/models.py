@@ -76,6 +76,28 @@ class GitRepoConfig(db.Model):
         db.session.commit()
 
 
+class ContainerActivity(db.Model):
+    """Track container lifecycle events (start, stop, restart) for dashboard activity feed."""
+    __tablename__ = "container_activity"
+
+    id = db.Column(db.Integer, primary_key=True)
+    container_id = db.Column(db.String(256), nullable=False)  # Short container ID
+    container_name = db.Column(db.String(256), nullable=False)
+    action = db.Column(db.String(32), nullable=False)  # 'started', 'stopped', 'restarted'
+    image = db.Column(db.String(500), nullable=True)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    def __repr__(self):
+        return f"<ContainerActivity {self.container_name} {self.action}>"
+
+    @classmethod
+    def get_recent(cls, limit: int = 10) -> list:
+        """Return the most recent activity entries, ordered newest first."""
+        return (
+            cls.query.order_by(cls.timestamp.desc()).limit(limit).all()
+        )
+
+
 class ProjectServerMapping(db.Model):
     """Maps a git compose project (by relative path) to a target Docker server."""
     __tablename__ = "project_server_mapping"
