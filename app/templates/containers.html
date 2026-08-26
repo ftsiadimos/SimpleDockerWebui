@@ -89,23 +89,24 @@
               <td class="wrap-cell d-none d-lg-table-cell align-middle">
                 {% set ports = container.ports %}
                 {% set has_any = false %}
+                {% set seen_ports = [] %}
                 {% for internal_port, host_ports in ports.items() %}
                   {% if host_ports %}
-                    {% set has_any = true %}
                     {% for host_port_info in host_ports %}
                       {% set host_port = host_port_info.get('HostPort') %}
-                      <a href="http://{{ serverurl.host if serverurl and serverurl.host else 'localhost' }}:{{ host_port }}" 
-                         target="_blank" 
-                         class="badge bg-secondary text-decoration-none me-1"
-                         title="{{ internal_port }} → {{ host_port }}">
-                        :{{ host_port }}
-                      </a>
+                      {% if host_port not in seen_ports %}
+                        {% if seen_ports.append(host_port) %}{% endif %}
+                        {% set has_any = true %}
+                        <a href="http://{{ serverurl.host if serverurl and serverurl.host else 'localhost' }}:{{ host_port }}" 
+                           target="_blank" 
+                           class="badge bg-secondary text-decoration-none me-1"
+                           title="{{ internal_port }} → {{ host_port }}">
+                          {{ host_port }}
+                        </a>
+                      {% endif %}
                     {% endfor %}
                   {% endif %}
                 {% endfor %}
-                {% if not has_any %}
-                  <span class="text-muted">—</span>
-                {% endif %}
               </td>
               <td class="btn-cell align-middle">
                 <button type="submit" formaction="{{ url_for('main.logs') }}" 
