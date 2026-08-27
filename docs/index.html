@@ -10,132 +10,223 @@
   <style>
     :root {
       --docker-blue: #0db7ed;
-      --docker-dark: #0d1b2a;
-      --docker-mid: #112233;
-      --accent: #00c8ff;
-      --card-bg: #0f2030;
+      --docker-dark: #e8eef4;
+      --docker-mid: #f2f6fa;
+      --accent: #0088cc;
+      --accent-glow: rgba(0, 136, 204, 0.2);
+      --card-bg: #ffffff;
+      --card-border: rgba(0, 136, 204, 0.12);
+      --card-hover-border: rgba(0, 136, 204, 0.4);
+      --text-primary: #1a2a3a;
+      --text-secondary: #4a6a80;
+      --text-muted: #7a9ab0;
+      --gradient-hero: linear-gradient(135deg, #f0f6fc 0%, #e0ecf5 40%, #d0e2f0 70%, #c0d8ec 100%);
+      --gradient-btn: linear-gradient(135deg, #0088cc, #006699);
+      --gradient-btn-hover: linear-gradient(135deg, #006699, #004d73);
+      --gradient-icon: linear-gradient(135deg, rgba(0, 136, 204, 0.08), rgba(0, 136, 204, 0.02));
+      --shadow-card: 0 1px 8px rgba(0, 0, 0, 0.06);
+      --shadow-card-hover: 0 8px 28px rgba(0, 136, 204, 0.12);
+      --shadow-btn: 0 4px 16px rgba(0, 136, 204, 0.25);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
     }
 
     body {
       background-color: var(--docker-dark);
-      color: #e0e8ef;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--text-primary);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
     /* ── HERO ─────────────────────────────────────────────── */
     .hero {
-      background: linear-gradient(135deg, #0d1b2a 0%, #0a2540 60%, #003366 100%);
-      padding: 100px 0 80px;
-      border-bottom: 1px solid rgba(0, 200, 255, 0.15);
+      background: var(--gradient-hero);
+      padding: 110px 0 90px;
+      border-bottom: 1px solid rgba(0, 136, 204, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0, 136, 204, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -30%;
+      left: -10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(13, 183, 237, 0.06) 0%, transparent 70%);
+      pointer-events: none;
     }
 
     .hero h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      color: #fff;
+      font-size: 3.2rem;
+      font-weight: 800;
+      color: #0d1b2a;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
     }
 
     .hero h1 span {
-      color: var(--accent);
+      background: linear-gradient(135deg, #0088cc, #006699);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .hero .lead {
-      font-size: 1.25rem;
-      color: #9ab;
+      font-size: 1.2rem;
+      color: var(--text-secondary);
       max-width: 620px;
+      line-height: 1.7;
     }
 
     .hero-logo {
-      font-size: 5rem;
-      color: var(--docker-blue);
-      filter: drop-shadow(0 0 18px rgba(13, 183, 237, 0.5));
+      font-size: 6rem;
+      color: #0088cc;
+      filter: drop-shadow(0 0 24px rgba(0, 136, 204, 0.25));
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
     }
 
     .badge-version {
-      background: rgba(0, 200, 255, 0.15);
-      color: var(--accent);
-      border: 1px solid rgba(0, 200, 255, 0.35);
-      font-size: 0.85rem;
-      padding: 4px 12px;
+      background: rgba(0, 136, 204, 0.1);
+      color: #0088cc;
+      border: 1px solid rgba(0, 136, 204, 0.25);
+      font-size: 0.82rem;
+      padding: 5px 14px;
       border-radius: 999px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
     }
 
     /* ── BUTTONS ──────────────────────────────────────────── */
     .btn-primary-custom {
-      background: linear-gradient(135deg, #0db7ed, #006bb3);
+      background: var(--gradient-btn);
       border: none;
       color: #fff;
       font-weight: 600;
-      padding: 12px 28px;
-      border-radius: 8px;
-      transition: all .25s;
+      padding: 13px 32px;
+      border-radius: var(--radius-sm);
+      transition: all .3s cubic-bezier(.4,0,.2,1);
+      box-shadow: 0 2px 8px rgba(0, 136, 204, 0.2);
     }
 
     .btn-primary-custom:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(13, 183, 237, 0.35);
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-btn);
       color: #fff;
+      background: var(--gradient-btn-hover);
     }
 
     .btn-outline-custom {
-      border: 1px solid rgba(0, 200, 255, 0.5);
-      color: var(--accent);
+      border: 1px solid rgba(0, 136, 204, 0.35);
+      color: #0088cc;
       font-weight: 600;
-      padding: 12px 28px;
-      border-radius: 8px;
+      padding: 13px 32px;
+      border-radius: var(--radius-sm);
       background: transparent;
-      transition: all .25s;
+      transition: all .3s cubic-bezier(.4,0,.2,1);
     }
 
     .btn-outline-custom:hover {
-      background: rgba(0, 200, 255, 0.1);
-      color: #fff;
-      transform: translateY(-2px);
+      background: rgba(0, 136, 204, 0.08);
+      border-color: #0088cc;
+      color: #006699;
+      transform: translateY(-3px);
+      box-shadow: 0 4px 16px rgba(0, 136, 204, 0.12);
     }
 
     /* ── FEATURE CARDS ────────────────────────────────────── */
     .feature-card {
       background: var(--card-bg);
-      border: 1px solid rgba(0, 200, 255, 0.12);
-      border-radius: 12px;
-      padding: 28px;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 32px 28px;
       height: 100%;
-      transition: border-color .25s, transform .25s;
+      transition: all .3s cubic-bezier(.4,0,.2,1);
+      box-shadow: var(--shadow-card);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-btn);
+      opacity: 0;
+      transition: opacity .3s;
     }
 
     .feature-card:hover {
-      border-color: rgba(0, 200, 255, 0.4);
-      transform: translateY(-4px);
+      border-color: var(--card-hover-border);
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-card-hover);
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
     }
 
     .feature-icon {
-      width: 52px;
-      height: 52px;
-      background: rgba(0, 200, 255, 0.1);
-      border-radius: 10px;
+      width: 56px;
+      height: 56px;
+      background: var(--gradient-icon);
+      border: 1px solid rgba(0, 136, 204, 0.1);
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
-      color: var(--accent);
-      margin-bottom: 16px;
+      font-size: 1.5rem;
+      color: #0088cc;
+      margin-bottom: 18px;
+      transition: all .3s;
+    }
+
+    .feature-card:hover .feature-icon {
+      background: rgba(0, 136, 204, 0.1);
+      border-color: rgba(0, 136, 204, 0.25);
+      box-shadow: 0 0 20px rgba(0, 136, 204, 0.1);
     }
 
     .feature-card h5 {
-      color: #fff;
-      font-weight: 600;
-      margin-bottom: 8px;
+      color: var(--text-primary);
+      font-weight: 650;
+      margin-bottom: 10px;
+      font-size: 1.08rem;
     }
 
     .feature-card p {
-      color: #7a9ab0;
-      font-size: 0.92rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
       margin: 0;
+      line-height: 1.65;
     }
 
     /* ── SECTIONS ─────────────────────────────────────────── */
     section {
-      padding: 80px 0;
+      padding: 90px 0;
     }
 
     section:nth-child(even) {
@@ -143,120 +234,166 @@
     }
 
     .section-title {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 8px;
+      font-size: 2.1rem;
+      font-weight: 750;
+      color: #0d1b2a;
+      margin-bottom: 10px;
+      letter-spacing: -0.3px;
     }
 
     .section-subtitle {
-      color: #7a9ab0;
-      margin-bottom: 48px;
+      color: var(--text-secondary);
+      margin-bottom: 52px;
+      font-size: 1.05rem;
     }
 
     /* ── CODE / INSTALL ───────────────────────────────────── */
     .code-block {
-      background: #050e1a;
-      border: 1px solid rgba(0, 200, 255, 0.15);
-      border-radius: 10px;
-      padding: 20px 24px;
-      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      background: #0d1b2a;
+      border: 1px solid rgba(0, 136, 204, 0.15);
+      border-radius: var(--radius-md);
+      padding: 24px 28px;
+      font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
       font-size: 0.88rem;
-      color: #b0e0ff;
+      color: #b0d4f1;
       position: relative;
       overflow-x: auto;
+      box-shadow: inset 0 1px 0 rgba(0, 136, 204, 0.05);
+      line-height: 1.7;
+    }
+
+    .code-block::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 136, 204, 0.3), transparent);
     }
 
     .code-block .comment { color: #4a7a90; }
-    .code-block .cmd     { color: var(--accent); }
+    .code-block .cmd     { color: #00aaff; font-weight: 500; }
 
     .tab-btn {
-      background: rgba(0, 200, 255, 0.06);
-      border: 1px solid rgba(0, 200, 255, 0.2);
-      color: #7a9ab0;
-      border-radius: 6px;
-      padding: 8px 18px;
+      background: rgba(0, 136, 204, 0.06);
+      border: 1px solid rgba(0, 136, 204, 0.2);
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      padding: 9px 20px;
       cursor: pointer;
-      transition: all .2s;
+      transition: all .25s cubic-bezier(.4,0,.2,1);
       font-size: 0.9rem;
+      font-weight: 500;
     }
 
     .tab-btn.active,
     .tab-btn:hover {
-      background: rgba(0, 200, 255, 0.15);
-      border-color: var(--accent);
-      color: var(--accent);
+      background: rgba(0, 136, 204, 0.12);
+      border-color: #0088cc;
+      color: #0088cc;
+      box-shadow: 0 0 16px rgba(0, 136, 204, 0.08);
     }
 
     /* ── STATS ────────────────────────────────────────────── */
     .stat-box {
       text-align: center;
-      padding: 32px 20px;
+      padding: 36px 20px;
     }
 
     .stat-box .number {
-      font-size: 2.8rem;
-      font-weight: 700;
-      color: var(--accent);
+      font-size: 2.6rem;
+      font-weight: 750;
+      color: #0088cc;
       line-height: 1;
+      text-shadow: 0 0 20px rgba(0, 136, 204, 0.15);
     }
 
     .stat-box .label {
-      color: #7a9ab0;
-      font-size: 0.9rem;
-      margin-top: 6px;
+      color: var(--text-secondary);
+      font-size: 0.88rem;
+      margin-top: 8px;
+      font-weight: 500;
     }
 
     /* ── DOCS CARDS ───────────────────────────────────────── */
     .doc-card {
       background: var(--card-bg);
-      border: 1px solid rgba(0, 200, 255, 0.12);
-      border-radius: 12px;
-      padding: 24px;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 28px;
       text-decoration: none;
       display: block;
-      transition: all .25s;
+      transition: all .3s cubic-bezier(.4,0,.2,1);
+      box-shadow: var(--shadow-card);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .doc-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-btn);
+      opacity: 0;
+      transition: opacity .3s;
     }
 
     .doc-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-3px);
+      border-color: #0088cc;
+      transform: translateY(-5px);
       text-decoration: none;
+      box-shadow: var(--shadow-card-hover);
     }
 
-    .doc-card h5 { color: #fff; font-weight: 600; }
-    .doc-card p  { color: #7a9ab0; font-size: 0.9rem; margin: 0; }
+    .doc-card:hover::before {
+      opacity: 1;
+    }
+
+    .doc-card h5 { color: var(--text-primary); font-weight: 650; font-size: 1.08rem; }
+    .doc-card p  { color: var(--text-secondary); font-size: 0.9rem; margin: 0; line-height: 1.65; }
+    .doc-card span { font-weight: 500; transition: color .2s; }
+    .doc-card:hover span { color: #0088cc; }
 
     /* ── FOOTER ───────────────────────────────────────────── */
     footer {
-      background: #050e1a;
-      border-top: 1px solid rgba(0, 200, 255, 0.1);
-      padding: 40px 0;
-      color: #4a6070;
-      font-size: 0.9rem;
+      background: #f6f9fc;
+      border-top: 1px solid rgba(0, 136, 204, 0.1);
+      padding: 44px 0;
+      color: var(--text-muted);
+      font-size: 0.88rem;
     }
 
     footer a {
-      color: var(--accent);
+      color: #0088cc;
       text-decoration: none;
+      transition: color .2s;
     }
 
-    footer a:hover { text-decoration: underline; }
+    footer a:hover { color: #006699; text-decoration: underline; }
 
     /* ── NAVBAR ───────────────────────────────────────────── */
     .navbar {
-      background: rgba(5, 14, 26, 0.95) !important;
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(0, 200, 255, 0.1);
+      background: rgba(255, 255, 255, 0.92) !important;
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0, 136, 204, 0.1);
+      padding: 12px 0;
+      box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
     }
 
-    .navbar-brand { color: #fff !important; font-weight: 700; font-size: 1.1rem; }
-    .nav-link     { color: #7a9ab0 !important; transition: color .2s; }
-    .nav-link:hover { color: var(--accent) !important; }
+    .navbar-brand { color: #0d1b2a !important; font-weight: 750; font-size: 1.15rem; letter-spacing: -0.2px; }
+    .nav-link     { color: var(--text-secondary) !important; transition: color .2s; font-weight: 500; }
+    .nav-link:hover { color: #0088cc !important; }
 
     @media (max-width: 768px) {
-      .hero { padding: 70px 0 60px; }
-      .hero h1 { font-size: 2rem; }
+      .hero { padding: 80px 0 60px; }
+      .hero h1 { font-size: 2.2rem; }
+      .hero-logo { font-size: 4rem; }
+      section { padding: 60px 0; }
+      .section-title { font-size: 1.7rem; }
     }
   </style>
 </head>
@@ -322,13 +459,13 @@
 </section>
 
 <!-- ── STATS ────────────────────────────────────────────────────── -->
-<div style="background:var(--docker-mid);border-bottom:1px solid rgba(0,200,255,.08)">
+<div style="background:var(--docker-mid);border-bottom:1px solid rgba(0,136,204,.08)">
   <div class="container">
     <div class="row">
-      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">Multi</div><div class="label">Docker Host Support</div></div></div>
-      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">Live</div><div class="label">Log Streaming</div></div></div>
-      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">GitOps</div><div class="label">Compose Workflows</div></div></div>
-      <div class="col-6 col-md-3"><div class="stat-box"><div class="number">MIT</div><div class="label">Open Source License</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number" style="color:#0088cc">Multi</div><div class="label">Docker Host Support</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number" style="color:#0088cc">Live</div><div class="label">Log Streaming</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number" style="color:#0088cc">GitOps</div><div class="label">Compose Workflows</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-box"><div class="number" style="color:#0088cc">MIT</div><div class="label">Open Source License</div></div></div>
     </div>
   </div>
 </div>
@@ -370,7 +507,7 @@
         <div class="feature-card">
           <div class="feature-icon"><i class="fas fa-terminal"></i></div>
           <h5>Web Terminal</h5>
-          <p>Full interactive shell via <code>xterm.js</code> — both SSH server terminal and container PTY shells.</p>
+          <p>Full interactive shell via <code style="color:var(--accent);background:rgba(0,212,255,.1);padding:2px 6px;border-radius:4px;font-size:.85rem">xterm.js</code> — both SSH server terminal and container PTY shells.</p>
         </div>
       </div>
 
@@ -426,11 +563,11 @@
       <p class="section-subtitle">Up and running in seconds</p>
     </div>
 
-    <div class="d-flex flex-wrap gap-2 justify-content-center mb-4">
-      <button class="tab-btn active" onclick="showTab('docker')">Docker</button>
-      <button class="tab-btn" onclick="showTab('compose')">Docker Compose</button>
-      <button class="tab-btn" onclick="showTab('ghcr')">GHCR</button>
-      <button class="tab-btn" onclick="showTab('source')">From Source</button>
+    <div class="d-flex flex-wrap gap-2 justify-content-center mb-5">
+      <button class="tab-btn active" onclick="showTab('docker')"><i class="fab fa-docker me-1"></i>Docker</button>
+      <button class="tab-btn" onclick="showTab('compose')"><i class="fab fa-docker me-1"></i>Docker Compose</button>
+      <button class="tab-btn" onclick="showTab('ghcr')"><i class="fab fa-github me-1"></i>GHCR</button>
+      <button class="tab-btn" onclick="showTab('source')"><i class="fab fa-git-alt me-1"></i>From Source</button>
     </div>
 
     <div class="row justify-content-center">
@@ -539,7 +676,7 @@ source venv/bin/activate
           <div class="feature-icon mb-3"><i class="fab fa-git-alt"></i></div>
           <h5>Git Compose Guide</h5>
           <p>Learn how to deploy docker-compose projects directly from a Git repository using the built-in GitOps workflow.</p>
-          <span class="mt-3 d-inline-block" style="color:var(--accent);font-size:0.85rem">Read guide →</span>
+          <span class="mt-3 d-inline-block" style="color:#0088cc;font-size:0.85rem;font-weight:600">Read guide <i class="fas fa-arrow-right ms-1" style="font-size:.75rem"></i></span>
         </a>
       </div>
 
@@ -548,7 +685,7 @@ source venv/bin/activate
           <div class="feature-icon mb-3"><i class="fas fa-bolt"></i></div>
           <h5>Gitea Actions CI/CD</h5>
           <p>Example workflows for triggering automated deployments through Gitea Actions pipelines.</p>
-          <span class="mt-3 d-inline-block" style="color:var(--accent);font-size:0.85rem">Read guide →</span>
+          <span class="mt-3 d-inline-block" style="color:#0088cc;font-size:0.85rem;font-weight:600">Read guide <i class="fas fa-arrow-right ms-1" style="font-size:.75rem"></i></span>
         </a>
       </div>
 
@@ -557,7 +694,7 @@ source venv/bin/activate
           <div class="feature-icon mb-3"><i class="fas fa-book"></i></div>
           <h5>Full README</h5>
           <p>Complete reference documentation including all configuration options, environment variables, and advanced usage.</p>
-          <span class="mt-3 d-inline-block" style="color:var(--accent);font-size:0.85rem">Read on GitHub →</span>
+          <span class="mt-3 d-inline-block" style="color:#0088cc;font-size:0.85rem;font-weight:600">Read on GitHub <i class="fas fa-arrow-right ms-1" style="font-size:.75rem"></i></span>
         </a>
       </div>
 
