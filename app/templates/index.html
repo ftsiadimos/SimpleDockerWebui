@@ -181,46 +181,96 @@
       <div class="card-header bg-light border-0">
         <h5 class="mb-0"><i class="fa-solid fa-bolt text-muted me-2"></i>Quick Actions</h5>
       </div>
-      <div class="card-body d-flex flex-column gap-3">
-        <a href="{{ url_for('main.compose') }}" class="btn btn-outline-primary d-flex align-items-center">
-          <i class="fa-solid fa-layer-group me-2"></i>
-          <span>Compose Projects</span>
+      <div class="card-body d-flex flex-column gap-3" id="quickActionsContainer">
+        <a href="{{ url_for('main.compose') }}" class="quick-action-btn btn btn-outline-primary d-flex align-items-center justify-content-between" data-action="compose">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-layer-group me-2"></i>
+            <span>Compose Projects</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.containers') }}" class="btn btn-outline-secondary d-flex align-items-center">
-          <i class="fa-brands fa-docker me-2"></i>
-          <span>Manage Containers</span>
+        <a href="{{ url_for('main.containers') }}" class="quick-action-btn btn btn-outline-secondary d-flex align-items-center justify-content-between" data-action="containers">
+          <span class="d-flex align-items-center">
+            <i class="fa-brands fa-docker me-2"></i>
+            <span>Manage Containers</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.images') }}" class="btn btn-outline-warning d-flex align-items-center">
-          <i class="fa-solid fa-boxes-stacked me-2"></i>
-          <span>Manage Images</span>
+        <a href="{{ url_for('main.images') }}" class="quick-action-btn btn btn-outline-warning d-flex align-items-center justify-content-between" data-action="images">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-boxes-stacked me-2"></i>
+            <span>Manage Images</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.volumes') }}" class="btn btn-outline-danger d-flex align-items-center">
-          <i class="fa-solid fa-database me-2"></i>
-          <span>Manage Volumes</span>
+        <a href="{{ url_for('main.volumes') }}" class="quick-action-btn btn btn-outline-danger d-flex align-items-center justify-content-between" data-action="volumes">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-database me-2"></i>
+            <span>Manage Volumes</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.networks') }}" class="btn btn-outline-success d-flex align-items-center">
-          <i class="fa-solid fa-network-wired me-2"></i>
-          <span>Manage Networks</span>
+        <a href="{{ url_for('main.networks') }}" class="quick-action-btn btn btn-outline-success d-flex align-items-center justify-content-between" data-action="networks">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-network-wired me-2"></i>
+            <span>Manage Networks</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.git_compose') }}" class="btn btn-outline-info d-flex align-items-center">
-          <i class="fa-solid fa-code-branch me-2"></i>
-          <span>Git Compose</span>
+        <a href="{{ url_for('main.git_compose') }}" class="quick-action-btn btn btn-outline-info d-flex align-items-center justify-content-between" data-action="git_compose">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-code-branch me-2"></i>
+            <span>Git Compose</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.terminal') }}" class="btn btn-outline-dark d-flex align-items-center">
-          <i class="fa-solid fa-terminal me-2"></i>
-          <span>Terminal</span>
+        <a href="{{ url_for('main.terminal') }}" class="quick-action-btn btn btn-outline-dark d-flex align-items-center justify-content-between" data-action="terminal">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-terminal me-2"></i>
+            <span>Terminal</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.settings') }}" class="btn btn-outline-secondary d-flex align-items-center">
-          <i class="fa-solid fa-sliders-h me-2"></i>
-          <span>Settings</span>
+        <a href="{{ url_for('main.settings') }}" class="quick-action-btn btn btn-outline-secondary d-flex align-items-center justify-content-between" data-action="settings">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-sliders-h me-2"></i>
+            <span>Settings</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.about') }}" class="btn btn-outline-info d-flex align-items-center">
-          <i class="fa-solid fa-info-circle me-2"></i>
-          <span>About</span>
+        <a href="{{ url_for('main.about') }}" class="quick-action-btn btn btn-outline-info d-flex align-items-center justify-content-between" data-action="about">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-info-circle me-2"></i>
+            <span>About</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
-        <a href="{{ url_for('main.docs') }}" class="btn btn-outline-primary d-flex align-items-center">
-          <i class="fa-solid fa-book me-2"></i>
-          <span>Docs</span>
+        <a href="{{ url_for('main.docs') }}" class="quick-action-btn btn btn-outline-primary d-flex align-items-center justify-content-between" data-action="docs">
+          <span class="d-flex align-items-center">
+            <i class="fa-solid fa-book me-2"></i>
+            <span>Docs</span>
+          </span>
+          <div class="drag-handle-icon" draggable="true">
+            <i class="fa-solid fa-grip-vertical"></i>
+          </div>
         </a>
       </div>
     </div>

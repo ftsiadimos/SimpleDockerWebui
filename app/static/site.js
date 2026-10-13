@@ -131,4 +131,165 @@ document.addEventListener('DOMContentLoaded', function(){
     console.warn('Button loading spinner init failed:', e);
   }
 
+  // Initialize drag-and-drop for Quick Actions
+  try {
+    var quickActionsContainer = document.getElementById('quickActionsContainer');
+    var draggedElement = null;
+    var isDragging = false;
+
+    // Load saved order from localStorage
+    function loadActionsOrder() {
+      var savedOrder = localStorage.getItem('quickActionsOrder');
+      if (savedOrder) {
+        try {
+          var order = JSON.parse(savedOrder);
+          var buttons = Array.from(quickActionsContainer.querySelectorAll('.quick-action-btn'));
+          
+          // Sort buttons according to saved order
+          buttons.sort(function(a, b) {
+            var indexA = order.indexOf(a.dataset.action);
+            var indexB = order.indexOf(b.dataset.action);
+            // If action not in saved order, keep original position
+            if (indexA === -1) indexA = buttons.indexOf(a);
+            if (indexB === -1) indexB = buttons.indexOf(b);
+            return indexA - indexB;
+          });
+          
+          // Reorder elements in the DOM
+          buttons.forEach(function(btn) {
+            quickActionsContainer.appendChild(btn);
+          });
+        } catch (e) {
+          console.warn('Failed to load quick actions order:', e);
+        }
+      }
+    }
+
+    // Save current order to localStorage
+    function saveActionsOrder() {
+      var order = Array.from(quickActionsContainer.querySelectorAll('.quick-action-btn'))
+        .map(function(btn) { return btn.dataset.action; });
+      localStorage.setItem('quickActionsOrder', JSON.stringify(order));
+    }
+
+    // Get all drag handles and attach listeners
+    function attachDragListeners() {
+      var dragHandles = quickActionsContainer.querySelectorAll('.drag-handle-icon');
+      
+      dragHandles.forEach(function(handle) {
+        handle.addEventListener('dragstart', function(e) {
+          isDragging = true;
+          draggedElement = this.closest('.quick-action-btn');
+          draggedElement.classList.add('dragging');
+          quickActionsContainer.classList.add('dragging-active');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', draggedElement.innerHTML);
+        });
+
+        handle.addEventListener('dragend', function(e) {
+          isDragging = false;
+          if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+          }
+          quickActionsContainer.classList.remove('dragging-active');
+          
+          // Remove all drag-over classes
+          var allBtns = quickActionsContainer.querySelectorAll('.quick-action-btn');
+          allBtns.forEach(function(b) {
+            b.classList.remove('drag-over', 'drag-over-bottom');
+          });
+
+          draggedElement = null;
+        });
+      });
+    }
+
+    // Attach listeners to buttons for dragover and drop
+    function attachButtonListeners() {
+      var quickActionBtns = quickActionsContainer.querySelectorAll('.quick-action-btn');
+      
+      quickActionBtns.forEach(function(btn) {
+        btn.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+
+          if (this === draggedElement) return;
+
+          var rect = this.getBoundingClientRect();
+          var midpoint = rect.top + rect.height / 2;
+
+          // Remove all drag-over classes first
+          quickActionBtns.forEach(function(b) {
+            b.classList.remove('drag-over', 'drag-over-bottom');
+          });
+
+          // Add class based on mouse position
+          if (e.clientY < midpoint) {
+            this.classList.add('drag-over');
+          } else {
+            this.classList.add('drag-over-bottom');
+          }
+        });
+
+        btn.addEventListener('dragleave', function(e) {
+          this.classList.remove('drag-over', 'drag-over-bottom');
+        });
+
+        btn.addEventListener('drop', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (this === draggedElement) return;
+
+          var rect = this.getBoundingClientRect();
+          var midpoint = rect.top + rect.height / 2;
+          
+          var allBtns = Array.from(quickActionsContainer.querySelectorAll('.quick-action-btn'));
+          var thisIndex = allBtns.indexOf(this);
+          var draggedIdx = allBtns.indexOf(draggedElement);
+
+          if (draggedIdx < thisIndex) {
+            // Dragging down
+            if (e.clientY < midpoint) {
+              this.parentNode.insertBefore(draggedElement, this);
+            } else {
+              this.parentNode.insertBefore(draggedElement, this.nextSibling);
+            }
+          } else {
+            // Dragging up
+            if (e.clientY < midpoint) {
+              this.parentNode.insertBefore(draggedElement, this);
+            } else {
+              this.parentNode.insertBefore(draggedElement, this.nextSibling);
+            }
+          }
+
+          // Save the new order
+          saveActionsOrder();
+          
+          // Re-attach listeners as DOM has changed
+          attachDragListeners();
+          attachButtonListeners();
+        });
+
+        // Prevent navigation if we're dragging
+        btn.addEventListener('click', function(e) {
+          if (isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        });
+      });
+    }
+
+    // Load the saved order on page load
+    loadActionsOrder();
+    attachDragListeners();
+    attachButtonListeners();
+
+  } catch (e) {
+    console.warn('Quick actions drag-and-drop init failed:', e);
+  }
+
+
 });
