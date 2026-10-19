@@ -9,6 +9,13 @@
       <span class="terminal-dot yellow"></span>
       <span class="terminal-dot green"></span>
       <span class="text-light ms-2">Server Terminal</span>
+      {% if tunnel_status and tunnel_status.configured %}
+        {% if tunnel_status.active %}
+          <span class="badge bg-info text-dark ms-2" title="Docker API forwarded to 127.0.0.1:{{ tunnel_status.local_port }}"><i class="fa-solid fa-link"></i> Tunnel :{{ tunnel_status.local_port }}</span>
+        {% else %}
+          <span class="badge bg-secondary ms-2" title="SSH tunnel configured but not open"><i class="fa-solid fa-link-slash"></i> Tunnel idle</span>
+        {% endif %}
+      {% endif %}
     </div>
     <button type="button" class="btn btn-outline-light btn-sm" onclick="window.history.back();" title="Close terminal">
       <i class="fa fa-times" aria-hidden="true"></i> Close

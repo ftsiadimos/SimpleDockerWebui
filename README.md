@@ -198,8 +198,8 @@ git clone https://github.com/ftsiadimos/SimpleDockerWebui.git
 cd SimpleDockerWebui
 
 # Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -221,8 +221,19 @@ SimpleDockerWebUI supports **multiple Docker servers**. Configure them through t
 1. Click **Config** in the navigation bar
 2. Add servers with a display name and connection details:
    - **Local**: Leave host empty to use `/var/run/docker.sock`
-   - **Remote**: Enter IP/hostname and port (default: 2375 or 2376)
+   - **Remote**: Enter IP/hostname and port (docker-management-default: 2375 or 2376, ssh-default: 22)
 3. Select the active server from the dropdown
+
+#### SSH Authentication & Dynamic Tunnel
+
+When adding a server you can choose between two SSH authentication methods (toggle in the form):
+
+- **Password** — a password field is shown
+- **SSH Key** — a dropdown lists every key file found in `%USERHOME%/.ssh` (public `*.pub` files and metadata like `known_hosts` are skipped)
+
+The former *Local SSH-Tunnel Port* field has been replaced by the boolean **Use SSH Tunnel** option. When enabled, the application assigns a free local TCP port dynamically and stores it in the model (`localPort`); the value is no longer shown or editable in the form.
+
+The **Docker Endpoint (tunnel target)** field defines what the SSH server forwards to. It defaults to `/var/run/docker.sock` (equivalent to `ssh -L :/var/run/docker.sock`) and can also be set to `host:port` for a TCP Docker endpoint. The tunnel uses a local listener plus OpenSSH `direct-streamlocal` / `direct-tcpip` channels, so it works on SSH servers that disallow remote (`-R`) forwarding.
 
 ### Server Terminal (SSH)
 

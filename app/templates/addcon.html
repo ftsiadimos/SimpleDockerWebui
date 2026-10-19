@@ -40,9 +40,22 @@
                 <div>
                   <strong>{{ server.display_name }}</strong>
                   {% if server.is_active %}<span class="badge bg-success ms-2">Active</span>{% endif %}
+                  {% set ts = tunnel_status.get(server.id) %}
+                  {% if ts and ts.configured %}
+                    {% if ts.active %}
+                      <span class="badge bg-info text-dark ms-2" title="SSH tunnel open on 127.0.0.1:{{ ts.local_port }} (dynamic port)"><i class="fa-solid fa-link"></i> Tunnel :{{ ts.local_port }}</span>
+                    {% else %}
+                      <span class="badge bg-secondary ms-2" title="SSH tunnel configured but not open yet (dynamic port)"><i class="fa-solid fa-link-slash"></i> Tunnel idle</span>
+                    {% endif %}
+                  {% endif %}
+                  {% if server.ssh_key %}
+                    <span class="badge bg-light text-dark ms-1" title="SSH key authentication"><i class="fa-solid fa-fingerprint"></i> Key</span>
+                  {% endif %}
                   <br>
                   <small class="text-muted">
-                    {% if server.host and server.port %}
+                    {% if ts and ts.configured %}
+                      tcp://127.0.0.1:{{ ts.local_port }} <span class="text-secondary">→ via SSH {{ server.user or '' }}@{{ server.host }} → {{ ts.remote }}</span>
+                    {% elif server.host and server.port %}
                       tcp://{{ server.host }}:{{ server.port }}
                     {% elif server.host %}
                       {{ server.host }}{% if server.port %}:{{ server.port }}{% endif %}
@@ -51,15 +64,34 @@
                     {% endif %}
                   </small>
                 </div>
-                <form action="" method="post" class="d-inline" onsubmit="return confirm('Delete this server?');">
-                  {{ select_form.hidden_tag() }}
-                  <button type="submit" name="delete_server" value="{{ server.id }}" class="btn btn-outline-danger btn-sm" title="Delete server">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
-                      <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
-                    </svg>
-                  </button>
-                </form>
+                <div class="d-flex align-items-center gap-2">
+                  {% if ts and ts.configured %}
+                    {% if ts.active %}
+                      <form action="" method="post" class="d-inline">
+                        {{ select_form.hidden_tag() }}
+                        <button type="submit" name="tunnel_close" value="{{ server.id }}" class="btn btn-outline-secondary btn-sm" title="Close SSH tunnel">
+                          <i class="fa-solid fa-link-slash" aria-hidden="true"></i>
+                        </button>
+                      </form>
+                    {% else %}
+                      <form action="" method="post" class="d-inline">
+                        {{ select_form.hidden_tag() }}
+                        <button type="submit" name="tunnel_open" value="{{ server.id }}" class="btn btn-outline-info btn-sm" title="Open SSH tunnel">
+                          <i class="fa-solid fa-link" aria-hidden="true"></i>
+                        </button>
+                      </form>
+                    {% endif %}
+                  {% endif %}
+                  <form action="" method="post" class="d-inline" onsubmit="return confirm('Delete this server?');">
+                    {{ select_form.hidden_tag() }}
+                    <button type="submit" name="delete_server" value="{{ server.id }}" class="btn btn-outline-danger btn-sm" title="Delete server">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                        <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                      </svg>
+                    </button>
+                  </form>
+                </div>
               </div>
               {% endfor %}
             </div>
@@ -128,6 +160,21 @@
               </div>
               
               <div class="mb-3">
+                <label class="form-label">SSH Authentication</label>
+                <div class="btn-group w-100" role="group" aria-label="SSH authentication method">
+                  <input type="radio" class="btn-check" name="auth_method" id="auth_method_password" value="password" autocomplete="off" checked>
+                  <label class="btn btn-outline-secondary" for="auth_method_password">
+                    <i class="fa-solid fa-key me-1" aria-hidden="true"></i> Password
+                  </label>
+                  <input type="radio" class="btn-check" name="auth_method" id="auth_method_key" value="key" autocomplete="off">
+                  <label class="btn btn-outline-secondary" for="auth_method_key">
+                    <i class="fa-solid fa-fingerprint me-1" aria-hidden="true"></i> SSH Key
+                  </label>
+                </div>
+                <div class="form-text">Password input and SSH key selection can be toggled.</div>
+              </div>
+
+              <div class="mb-3" id="passwordFieldGroup">
                 {{ add_form.password.label(class="form-label") }}
                 {{ add_form.password(class="form-control" + (" is-invalid" if add_form.password.errors else "")) }}
                 {% if add_form.password.errors %}
@@ -136,6 +183,39 @@
                   </div>
                 {% endif %}
                 <div class="form-text">SSH password (leave empty for key-based auth)</div>
+              </div>
+
+              <div class="mb-3 d-none" id="sshKeyFieldGroup">
+                {{ add_form.ssh_key.label(class="form-label") }}
+                {{ add_form.ssh_key(class="form-select" + (" is-invalid" if add_form.ssh_key.errors else "")) }}
+                {% if add_form.ssh_key.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in add_form.ssh_key.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
+                <div class="form-text">Keys found in <code>{{ ssh_dir }}</code></div>
+              </div>
+
+              <div class="mb-3 form-check">
+                {{ add_form.ssh_tunnel(class="form-check-input" + (" is-invalid" if add_form.ssh_tunnel.errors else ""), id="ssh_tunnel_check") }}
+                {{ add_form.ssh_tunnel.label(class="form-check-label") }}
+                {% if add_form.ssh_tunnel.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in add_form.ssh_tunnel.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
+                <div class="form-text">Forward the Docker API through SSH. The local tunnel port is assigned automatically.</div>
+              </div>
+
+              <div class="mb-3" id="tunnelTargetGroup">
+                {{ add_form.tunnel_target.label(class="form-label") }}
+                {{ add_form.tunnel_target(class="form-control" + (" is-invalid" if add_form.tunnel_target.errors else "")) }}
+                {% if add_form.tunnel_target.errors %}
+                  <div class="invalid-feedback d-block">
+                    {% for error in add_form.tunnel_target.errors %}{{ error }}{% endfor %}
+                  </div>
+                {% endif %}
+                <div class="form-text">Remote Docker endpoint reached through the tunnel — default <code>/var/run/docker.sock</code> (or <code>127.0.0.1:2375</code> for TCP).</div>
               </div>
               
               <div class="d-grid gap-2">
@@ -156,4 +236,34 @@
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    var passwordGroup = document.getElementById('passwordFieldGroup');
+    var keyGroup = document.getElementById('sshKeyFieldGroup');
+    var passwordRadio = document.getElementById('auth_method_password');
+    var keyRadio = document.getElementById('auth_method_key');
+
+    function applyAuthMethod() {
+      var keyMode = keyRadio && keyRadio.checked;
+      if (keyGroup) keyGroup.classList.toggle('d-none', !keyMode);
+      if (passwordGroup) passwordGroup.classList.toggle('d-none', keyMode);
+    }
+
+    if (passwordRadio) passwordRadio.addEventListener('change', applyAuthMethod);
+    if (keyRadio) keyRadio.addEventListener('change', applyAuthMethod);
+    applyAuthMethod();
+
+    // Show/hide the tunnel target field depending on the "Use SSH Tunnel" checkbox.
+    var tunnelCheck = document.getElementById('ssh_tunnel_check');
+    var tunnelTargetGroup = document.getElementById('tunnelTargetGroup');
+    function applyTunnel() {
+      if (!tunnelTargetGroup) return;
+      var on = tunnelCheck && tunnelCheck.checked;
+      tunnelTargetGroup.classList.toggle('d-none', !on);
+    }
+    if (tunnelCheck) tunnelCheck.addEventListener('change', applyTunnel);
+    applyTunnel();
+  })();
+</script>
 {% endblock %}
