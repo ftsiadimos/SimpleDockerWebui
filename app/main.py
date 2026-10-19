@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import html as html_module
+import select
 
 import docker
 import paramiko # type: ignore
@@ -79,7 +80,11 @@ def handle_server_selection():
 
     server = DockerServer.query.get(server_id)
     if server:
+        old_active = DockerServer.get_active()
         DockerServer.set_active(server_id)
+        # Close tunnels that are no longer for the active server
+        if old_active and old_active.id != server_id:
+            _close_ssh_tunnel(old_active.id)
         _docker_client_cache.clear()
         flash(f'Connected to "{server.display_name}".', 'success')
         # Redirect back to the current page (without POST data)
@@ -113,11 +118,367 @@ _docker_client_cache = {}
 import time
 
 
+# ------------------------------------------------------------------
+# SSH tunnel management
+# ------------------------------------------------------------------
+# Keyed by server id -> _SSHTunnel instance. Allows reusing an already open
+# tunnel across requests and cleaning it up when the server is switched/deleted.
+_ssh_tunnels = {}
+_ssh_tunnels_lock = threading.Lock()
+
+
+class _SSHTunnel:
+    """A local port-forward (``ssh -L``) mapping 127.0.0.1:<localPort> to the
+    remote Docker API endpoint.
+
+    The local listener socket is owned and managed by this class. For every
+    incoming local connection we open an SSH channel to the remote target:
+      - ``('unix', '/var/run/docker.sock')`` -> OpenSSH ``direct-streamlocal``
+        channel (equivalent to ``ssh -L port:/var/run/docker.sock``)
+      - ``('tcp', ('host', port))``          -> ``direct-tcpip`` channel
+        (equivalent to ``ssh -L port:host:port``)
+
+    This mirrors what the OpenSSH client does for ``-L`` forwards and does
+    NOT require the SSH server to allow *remote* (``-R``) forwarding, so it
+    works on servers where ``request_port_forward`` would be denied.
+    """
+
+    def __init__(self, ssh_client, bind_host, bind_port, target):
+        self.ssh_client = ssh_client
+        self.transport = ssh_client.get_transport()
+        self.bind_host = bind_host
+        self.bind_port = bind_port
+        # target is (kind, value): ('unix', path) or ('tcp', (host, port))
+        self.target = target
+        self._stop = threading.Event()
+        self._thread = None
+        self._listener = None
+        self._channels = []
+
+    @property
+    def target_label(self):
+        """Human readable description of the forward target."""
+        kind, value = self.target
+        if kind == 'unix':
+            return value
+        return f"{value[0]}:{value[1]}"
+
+    def start(self):
+        # For a classic local forward we only need to accept connections on a
+        # local socket and open a channel to the remote target for each one.
+        # Bind synchronously so a bind failure (e.g. port in use) is raised to
+        # the caller instead of silently failing in the thread.
+        import socket as _socket
+        listener = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        listener.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+        try:
+            listener.bind((self.bind_host, self.bind_port))
+        except OSError:
+            listener.close()
+            raise
+        listener.listen(50)
+        listener.settimeout(0.5)
+        self._listener = listener
+
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+        return self
+
+    def _serve(self):
+        listener = self._listener
+        if listener is None:
+            return
+        while not self._stop.is_set():
+            try:
+                client_conn, addr = listener.accept()
+            except Exception:
+                # Timeout (0.5s) or listener closed -> loop again / exit.
+                if self._stop.is_set():
+                    break
+                continue
+            try:
+                chan = self._open_channel(addr)
+            except Exception as exc:
+                log.warning("SSH tunnel: failed to open channel to %s: %s",
+                            self.target_label, exc)
+                try:
+                    client_conn.close()
+                except Exception:
+                    pass
+                continue
+            self._channels.append(chan)
+            handler = threading.Thread(
+                target=self._bridge, args=(client_conn, chan), daemon=True)
+            handler.start()
+
+    def _open_channel(self, src_addr):
+        """Open an SSH channel (direct-streamlocal or direct-tcpip) to target."""
+        kind, value = self.target
+        if kind == 'unix':
+            return _open_direct_streamlocal_channel(self.transport, value)
+        return self.transport.open_channel('direct-tcpip', value, src_addr)
+
+    def _bridge(self, sock, chan):
+        """Pump bytes in both directions between the local socket and channel."""
+        try:
+            while not self._stop.is_set():
+                r, _w, _x = select.select([sock, chan], [], [], 0.5)
+                if sock in r:
+                    data = sock.recv(4096)
+                    if not data:
+                        break
+                    chan.sendall(data)
+                if chan in r:
+                    data = chan.recv(4096)
+                    if not data:
+                        break
+                    sock.sendall(data)
+        except Exception:
+            pass
+        finally:
+            for obj in (chan, sock):
+                try:
+                    obj.close()
+                except Exception:
+                    pass
+            if chan in self._channels:
+                self._channels.remove(chan)
+
+    def stop(self):
+        self._stop.set()
+        try:
+            if self._listener:
+                self._listener.close()
+        except Exception:
+            pass
+        for chan in list(self._channels):
+            try:
+                chan.close()
+            except Exception:
+                pass
+        try:
+            self.ssh_client.close()
+        except Exception:
+            pass
+
+
+def _open_direct_streamlocal_channel(transport, socket_path):
+    """Open an OpenSSH ``direct-streamlocal@openssh.com`` channel.
+
+    This is the channel type OpenSSH uses for ``ssh -L localport:/path/to.sock``
+    (Unix domain socket forwarding). Paramiko's ``open_channel`` does not
+    implement it, so we craft the ``SSH_MSG_CHANNEL_OPEN`` message ourselves,
+    following the OpenSSH PROTOCOL spec:
+
+        byte      SSH_MSG_CHANNEL_OPEN
+        string    "direct-streamlocal@openssh.com"
+        uint32    sender channel
+        uint32    initial window size
+        uint32    maximum packet size
+        string    socket path
+        string    reserved (empty)
+        uint32    reserved (0)
+    """
+    import time as _time
+    from paramiko.message import Message
+    from paramiko.channel import Channel
+    from paramiko.common import cMSG_CHANNEL_OPEN
+    from paramiko.ssh_exception import SSHException
+
+    if not transport.active:
+        raise SSHException("SSH session not active")
+
+    timeout = transport.channel_timeout
+    transport.lock.acquire()
+    try:
+        window_size = transport._sanitize_window_size(None)
+        max_packet_size = transport._sanitize_packet_size(None)
+        chanid = transport._next_channel()
+        m = Message()
+        m.add_byte(cMSG_CHANNEL_OPEN)
+        m.add_string("direct-streamlocal@openssh.com")
+        m.add_int(chanid)
+        m.add_int(window_size)
+        m.add_int(max_packet_size)
+        m.add_string(socket_path)
+        m.add_string("")   # reserved: originator address
+        m.add_int(0)       # reserved: originator port
+        chan = Channel(chanid)
+        transport._channels.put(chanid, chan)
+        transport.channel_events[chanid] = event = threading.Event()
+        transport.channels_seen[chanid] = True
+        chan._set_transport(transport)
+        chan._set_window(window_size, max_packet_size)
+    finally:
+        transport.lock.release()
+
+    transport._send_user_message(m)
+    start_ts = _time.time()
+    while True:
+        event.wait(0.1)
+        if not transport.active:
+            e = transport.get_exception()
+            if e is None:
+                e = SSHException("Unable to open channel.")
+            raise e
+        if event.is_set():
+            break
+        if start_ts + timeout < _time.time():
+            raise SSHException("Timeout opening channel.")
+    chan = transport._channels.get(chanid)
+    if chan is not None:
+        return chan
+    e = transport.get_exception()
+    if e is None:
+        e = SSHException("Unable to open channel.")
+    raise e
+
+
+def _ssh_connect_kwargs(server):
+    """Build paramiko ``connect`` kwargs honoring password/key authentication.
+
+    If the server has an ``ssh_key`` configured, key-based auth with that
+    specific key file is used. Otherwise password based auth is used (when a
+    password is stored), falling back to the SSH agent / default key lookup.
+    """
+    kwargs = {
+        'hostname': server.host,
+        'username': server.user,
+        'timeout': 10,
+    }
+    key_path = server.resolve_ssh_key()
+    if key_path:
+        kwargs.update({
+            'key_filename': key_path,
+            'look_for_keys': False,
+            'allow_agent': False,
+        })
+        if server.password:
+            kwargs['password'] = server.password
+    elif server.password:
+        kwargs.update({
+            'password': server.password,
+            'look_for_keys': False,
+            'allow_agent': False,
+        })
+    else:
+        kwargs.update({'allow_agent': True, 'look_for_keys': True})
+    return kwargs
+
+
+def _open_ssh_tunnel(server):
+    """Open (or reuse) a local SSH tunnel for ``server``.
+
+    Returns the ``_SSHTunnel`` instance on success, ``None`` if no tunnel is
+    configured, or raises on connection failure.
+    """
+    if not (server.host and server.port and server.ssh_tunnel):
+        return None
+    # Ensure a dynamic local port has been assigned (stored on the model).
+    local_port = server.ensure_local_port(persist=True)
+    if not local_port:
+        return None
+
+    with _ssh_tunnels_lock:
+        existing = _ssh_tunnels.get(server.id)
+        if existing and existing.ssh_client.get_transport() \
+                and existing.ssh_client.get_transport().is_active():
+            return existing
+
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh_client.connect(**_ssh_connect_kwargs(server))
+
+        # Destination the SSH server forwards to (unix socket or tcp host:port).
+        target = server.tunnel_target_spec
+
+        # If the previously assigned local port is occupied (e.g. leftover
+        # process), pick a fresh free port and persist it.
+        try:
+            tunnel = _SSHTunnel(
+                ssh_client,
+                bind_host='127.0.0.1',
+                bind_port=local_port,
+                target=target,
+            ).start()
+        except OSError:
+            ssh_client.close()
+            server.localPort = None
+            new_port = server.ensure_local_port()
+            if not new_port:
+                raise
+            ssh_client = paramiko.SSHClient()
+            ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh_client.connect(**_ssh_connect_kwargs(server))
+            tunnel = _SSHTunnel(
+                ssh_client,
+                bind_host='127.0.0.1',
+                bind_port=new_port,
+                target=target,
+            ).start()
+        _ssh_tunnels[server.id] = tunnel
+        return tunnel
+
+
+def _close_ssh_tunnel(server_id):
+    """Close and forget the tunnel for ``server_id`` (if any)."""
+    with _ssh_tunnels_lock:
+        tunnel = _ssh_tunnels.pop(server_id, None)
+    if tunnel:
+        try:
+            tunnel.stop()
+        except Exception:
+            log.exception("Failed to close SSH tunnel for server %s", server_id)
+
+
+def _tunnel_status(server):
+    """Return a display-friendly dict describing the SSH tunnel state.
+
+    Keys:
+      configured     -- the server has an SSH tunnel defined (host/port/localPort)
+      active         -- a live tunnel is currently open for this server
+      local_port     -- the configured local port (int) or None
+      remote         -- "127.0.0.1:<port>" the Docker API is forwarded to, or None
+    """
+    configured = bool(server and server.host and server.port and server.ssh_tunnel)
+    active = False
+    if configured:
+        with _ssh_tunnels_lock:
+            tunnel = _ssh_tunnels.get(server.id)
+        if tunnel and tunnel.ssh_client.get_transport() \
+                and tunnel.ssh_client.get_transport().is_active():
+            active = True
+    return {
+        'configured': configured,
+        'active': active,
+        'local_port': server.local_port if configured else None,
+        'remote': _target_label(server) if configured else None,
+    }
+
+
+def _target_label(server):
+    """Human readable label for the SSH tunnel target of ``server``."""
+    try:
+        kind, value = server.tunnel_target_spec
+        if kind == 'unix':
+            return value
+        return f"{value[0]}:{value[1]}"
+    except Exception:
+        return None
+
+
 def get_docker_base_url():
-    """Get the Docker base URL from the active server configuration."""
+    """Get the Docker base URL from the active server configuration.
+
+    If the server has an SSH tunnel configured, the tunnel is opened (or
+    reused) and the local forwarded port is used as the Docker endpoint.
+    """
     server = DockerServer.get_active()
     if not server or not server.is_configured:
         return 'unix://var/run/docker.sock', server
+    if server.is_ssh_tunnel:
+        _open_ssh_tunnel(server)
+        return server.connection_url, server
     return f"tcp://{server.host}:{server.port}", server
 
 
@@ -264,8 +625,12 @@ def index():
 
         server = DockerServer.query.get(server_id)
         if server:
-            base_url = f"tcp://{server.host}:{server.port}" if server.is_configured else 'unix://var/run/docker.sock'
             try:
+                if server.is_ssh_tunnel:
+                    _open_ssh_tunnel(server)
+                    base_url = server.connection_url
+                else:
+                    base_url = f"tcp://{server.host}:{server.port}" if server.is_configured else 'unix://var/run/docker.sock'
                 client = docker.DockerClient(base_url=base_url, timeout=60)
                 client.ping()
                 DockerServer.set_active(server_id)
@@ -469,6 +834,12 @@ _DOCS_REGISTRY = [
         'file': 'gitea-actions-example.md',
         'title': 'Gitea Actions Integration',
         'description': 'Deploy docker-compose projects automatically via Gitea Actions CI/CD.',
+    },
+    {
+        'slug': 'ssh-tunnel',
+        'file': 'ssh-tunnel.md',
+        'title': 'SSH Tunnel — Docker Remote Access',
+        'description': 'Set up a restricted SSH user and tunnel to securely access a remote Docker daemon.',
     },
 ]
 
@@ -767,7 +1138,7 @@ def compose():
                 try:
                     ssh_client = paramiko.SSHClient()
                     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    ssh_client.connect(server_obj.host, username=server_obj.user, password=server_obj.password)
+                    ssh_client.connect(**_ssh_connect_kwargs(server_obj))
                     cmd = f'cd "{compose_dir}" && docker compose -f docker-compose.yml up -d'
                     stdin, stdout, stderr = ssh_client.exec_command(cmd)
                     exit_code = stdout.channel.recv_exit_status()
@@ -809,7 +1180,7 @@ def compose():
                 try:
                     ssh_client = paramiko.SSHClient()
                     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    ssh_client.connect(server_obj.host, username=server_obj.user, password=server_obj.password)
+                    ssh_client.connect(**_ssh_connect_kwargs(server_obj))
                     cmd = f'cd "{compose_dir}" && docker compose -f docker-compose.yml stop'
                     stdin, stdout, stderr = ssh_client.exec_command(cmd)
                     exit_code = stdout.channel.recv_exit_status()
@@ -995,7 +1366,11 @@ def git_compose():
         else:
             target_server = ProjectServerMapping.get_server_for_project(compose_path)
         if target_server and target_server.is_configured:
-            base_url = f"tcp://{target_server.host}:{target_server.port}"
+            if target_server.is_ssh_tunnel:
+                _open_ssh_tunnel(target_server)
+                base_url = target_server.connection_url
+            else:
+                base_url = f"tcp://{target_server.host}:{target_server.port}"
         else:
             base_url, _ = get_docker_base_url()
 
@@ -1488,20 +1863,35 @@ def addcon():
         return s.display_name
     
     select_form.server.choices = [(s.id, get_server_label(s)) for s in servers]
+
+    # Populate the SSH key dropdown from <USERHOME>/.ssh
+    ssh_keys = DockerServer.list_ssh_keys()
+    add_form.ssh_key.choices = [('', '— Password authentication —')] + [
+        (name, name) for name in ssh_keys
+    ]
     
     # Handle form submissions
     if request.method == 'POST':
         # Add new server
         if 'submit' in request.form:
             if add_form.validate():
+                ssh_key = add_form.ssh_key.data or None
+                if ssh_key and ssh_key not in ssh_keys:
+                    ssh_key = None
                 new_server = DockerServer(
                     display_name=add_form.display_name.data,
                     host=add_form.host.data or None,
                     port=add_form.port.data or None,
                     user=add_form.user.data or None,
-                    password=add_form.password.data or None,
+                    password=None if ssh_key else (add_form.password.data or None),
+                    ssh_key=ssh_key,
+                    ssh_tunnel=bool(add_form.ssh_tunnel.data),
+                    tunnel_target=(add_form.tunnel_target.data or '/var/run/docker.sock').strip(),
                     is_active=len(servers) == 0  # First server is active by default
                 )
+                # Assign a dynamic local tunnel port when the tunnel is enabled.
+                if new_server.ssh_tunnel:
+                    new_server.ensure_local_port()
                 db.session.add(new_server)
                 db.session.commit()
                 _docker_client_cache.clear()
@@ -1550,8 +1940,11 @@ def addcon():
             if server:
                 name = server.display_name
                 was_active = server.is_active
+                deleted_id = server.id
                 db.session.delete(server)
                 db.session.commit()
+                # Close any tunnel associated with the deleted server
+                _close_ssh_tunnel(deleted_id)
                 # If deleted server was active, activate another one
                 if was_active:
                     remaining = DockerServer.query.first()
@@ -1560,16 +1953,52 @@ def addcon():
                 _docker_client_cache.clear()
                 flash(f'Server "{name}" deleted.', 'success')
             return redirect(url_for('main.addcon'))
+
+        # Open SSH tunnel for a server
+        if 'tunnel_open' in request.form:
+            server_id = request.form.get('tunnel_open')
+            server = db.session.get(DockerServer, server_id)
+            if not server:
+                flash('Server not found.', 'danger')
+            elif not (server.host and server.port and server.ssh_tunnel):
+                flash('This server has no SSH tunnel configured.', 'warning')
+            else:
+                try:
+                    tunnel = _open_ssh_tunnel(server)
+                    if tunnel:
+                        flash(f'SSH tunnel opened on 127.0.0.1:{server.local_port}.', 'success')
+                    else:
+                        flash('SSH tunnel could not be opened.', 'warning')
+                except Exception as e:
+                    log.exception("Failed to open tunnel for server %s", server_id)
+                    flash(f'Failed to open SSH tunnel: {e}', 'danger')
+            return redirect(url_for('main.addcon'))
+
+        # Close SSH tunnel for a server
+        if 'tunnel_close' in request.form:
+            server_id = request.form.get('tunnel_close')
+            try:
+                _close_ssh_tunnel(int(server_id))
+                _docker_client_cache.clear()
+                flash('SSH tunnel closed.', 'success')
+            except Exception as e:
+                flash(f'Failed to close SSH tunnel: {e}', 'danger')
+            return redirect(url_for('main.addcon'))
     
     # Set default selection to active server (only for GET requests)
     if active_server:
         select_form.server.data = active_server.id
 
+    # Build tunnel status map for the "Saved Servers" list
+    tunnel_status = {s.id: _tunnel_status(s) for s in servers}
+
     return render_template('addcon.html', 
                           add_form=add_form, 
                           select_form=select_form,
                           servers=servers,
-                          active_server=active_server)
+                          active_server=active_server,
+                          tunnel_status=tunnel_status,
+                          ssh_dir=DockerServer.ssh_dir())
 
 
 
@@ -1688,7 +2117,8 @@ def terminal():
         flash('No server configured.', 'warning')
         return redirect(url_for('main.addcon'))
 
-    return render_template('terminal.html', server=server, select_form=select_form)
+    return render_template('terminal.html', server=server, select_form=select_form,
+                           tunnel_status=_tunnel_status(server))
 
 
 @sock.route('/ssh')
@@ -1719,10 +2149,7 @@ def ssh(sock):
     try:
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        connect_kwargs = {'hostname': server.host, 'username': server.user, 'allow_agent': True, 'look_for_keys': True}
-        if server.password:
-            connect_kwargs['password'] = server.password
-        ssh_client.connect(**connect_kwargs, timeout=10)
+        ssh_client.connect(**_ssh_connect_kwargs(server))
     except Exception as e:
         sock.send(f'SSH connection error: {e}')
         return

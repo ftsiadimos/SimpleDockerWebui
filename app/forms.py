@@ -23,7 +23,7 @@ class AddServerForm(FlaskForm):
         render_kw={'placeholder': 'docker.example.com or 192.168.1.100'}
     )
     port = StringField(
-        'Docker Port',
+        'Docker or SSH-Port',
         validators=[
             Optional(),
             Length(max=10),
@@ -46,6 +46,26 @@ class AddServerForm(FlaskForm):
             Length(max=255, message='Password must be less than 255 characters')
         ],
         render_kw={'placeholder': 'SSH password (optional if using keys)', 'autocomplete': 'current-password'}
+    )
+    ssh_key = SelectField(
+        'SSH Key',
+        validators=[Optional()],
+        choices=[],
+        validate_choice=False,
+    )
+    # Use an SSH tunnel instead of a manually entered local port. The local
+    # tunnel port itself is assigned dynamically by the application.
+    ssh_tunnel = BooleanField('Use SSH Tunnel (dynamic local port)', default=False)
+    # Remote Docker endpoint reached through the SSH tunnel. Defaults to the
+    # standard Docker unix socket /var/run/docker.sock.
+    tunnel_target = StringField(
+        'Docker Endpoint (tunnel target)',
+        validators=[
+            Optional(),
+            Length(max=255, message='Endpoint must be less than 255 characters')
+        ],
+        default='/var/run/docker.sock',
+        render_kw={'placeholder': '/var/run/docker.sock or 127.0.0.1:2375'}
     )
     submit = SubmitField('Add Server')
 
