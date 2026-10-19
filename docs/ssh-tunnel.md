@@ -1,5 +1,7 @@
 # SSH Tunnel Guide
 
+**Contributed by:** Sven Hofrichter (sven@hofrichter.net)
+
 ## Preparations
 
 On the remote VM, a restricted SSH user must be given access to `/var/run/docker.sock`. The management host then establishes an SSH tunnel to the Docker Unix socket and binds it locally to a TCP port.

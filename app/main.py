@@ -1,4 +1,8 @@
-"""Main routes and WebSocket handlers for LightDockerWebUI."""
+"""Main routes and WebSocket handlers for LightDockerWebUI.
+
+SSH tunnel support, dynamic tunnel management, and form field updates contributed by
+Sven Hofrichter (sven@hofrichter.net)
+"""
 import os
 import re
 import subprocess

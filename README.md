@@ -418,7 +418,16 @@ Contributions are welcome! Here's how:
 
 ---
 
-## 📄 License
+## � Contributors
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for a list of project contributors.
+
+Key contributions:
+- **SSH Tunnel Support** — Sven Hofrichter ([sven@hofrichter.net](mailto:sven@hofrichter.net))
+
+---
+
+## �📄 License
 
 This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
 

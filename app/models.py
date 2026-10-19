@@ -1,4 +1,7 @@
-"""Database models for LightDockerWebUI."""
+"""Database models for LightDockerWebUI.
+
+SSH tunnel support and localPort implementation contributed by Sven Hofrichter (sven@hofrichter.net)
+"""
 import os
 import socket
 from datetime import datetime, timezone

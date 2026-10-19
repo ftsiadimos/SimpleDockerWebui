@@ -1,4 +1,7 @@
-"""Form definitions for LightDockerWebUI."""
+"""Form definitions for LightDockerWebUI.
+
+SSH authentication fields (ssh_key, ssh_tunnel, tunnel_target) contributed by Sven Hofrichter (sven@hofrichter.net)
+"""
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, SelectField, PasswordField, BooleanField
 from wtforms.validators import Optional, Length, Regexp, DataRequired, URL

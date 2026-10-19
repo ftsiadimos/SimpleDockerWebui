@@ -8,6 +8,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 
 
+# SSH tunnel support and localPort migration contributed by Sven Hofrichter (sven@hofrichter.net)
 def _add_missing_columns(table, columns):
     """Add missing columns to an existing table if the DB predates the model.
 
