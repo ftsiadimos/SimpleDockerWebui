@@ -15,7 +15,7 @@ def _get_server_label(server):
 def select_form_processor():
     """Make select_form available in all templates."""
     form = SelectServerForm()
-    servers = DockerServer.query.filter_by(is_active=True).all()
+    servers = DockerServer.query.all()
     if servers:
         form.server.choices = [(s.id, _get_server_label(s)) for s in servers]
     else:

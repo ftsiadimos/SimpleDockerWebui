@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block page_title %}Container Terminal — {{ container_name }}{% endblock %}
+
+{% block content %}
+<div class="terminal-container shadow">
+  <div class="terminal-header">
+    <div class="terminal-title">
+      <span class="terminal-dot red"></span>
+      <span class="terminal-dot yellow"></span>
+      <span class="terminal-dot green"></span>
+      <span class="text-light ms-2">Container Terminal: {{ container_name }}</span>
+    </div>
+    <button type="button" class="btn btn-outline-light btn-sm" onclick="window.history.back();" title="Close terminal">
+      <i class="fa fa-times" aria-hidden="true"></i> Close
+    </button>
+  </div>
+  <div id="output" class="terminal-body">
+    <div id="terminal" style="height: 60vh; width: 100%;"></div>
+  </div>
+</div>
+
+<!-- xterm.js and fit addon (bundled locally for offline use) -->
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/xterm/xterm.css') }}" />
+<script src="{{ url_for('static', filename='vendor/xterm/xterm.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/xterm/xterm-addon-fit.js') }}"></script>
+
+<script>
+  const output = document.getElementById('output');
+  const terminalContainer = document.getElementById('terminal');
+  const containerId = '{{ container_id }}';
+  const containerName = '{{ container_name }}';
+
+  // WebSocket connection (Container exec)
+  const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+  // Create xterm
+  const term = new Terminal({cursorBlink: true, convertEol: true});
+  const fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  term.open(terminalContainer);
+  fitAddon.fit();
+
+  const socket = new WebSocket(`${wsProtocol}//${location.host}/container?id=${containerId}`);
+  socket.binaryType = 'arraybuffer';
+
+  socket.addEventListener('open', () => {
+    term.writeln(`Connected to container: ${containerName}`);
+    fitAddon.fit();
+    socket.send(JSON.stringify({type: 'resize', cols: term.cols, rows: term.rows}));
+    term.focus();
+  });
+
+  socket.addEventListener('message', (event) => {
+    if (event.data === '__CLEAR__') {
+      term.clear();
+    } else {
+      term.write(event.data);
+    }
+  });
+
+  socket.addEventListener('close', () => term.writeln('\\r\\nConnection closed.'));
+  socket.addEventListener('error', () => term.writeln('\\r\\nConnection error.'));
+
+  // Send data from terminal to container
+  term.onData((data) => {
+    try { socket.send(data); } catch (e) { /* ignore */ }
+  });
+
+  // Resize handling
+  let resizeTimeout = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      fitAddon.fit();
+      try { socket.send(JSON.stringify({type: 'resize', cols: term.cols, rows: term.rows})); } catch (e) { }
+    }, 150);
+  });
+
+  // Ensure focus on click
+  terminalContainer.addEventListener('click', () => term.focus());
+</script>
+
+{% endblock %}
